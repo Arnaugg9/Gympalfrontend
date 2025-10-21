@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import AppLayout from '../components/AppLayout';
 import { Card, CardContent, CardHeader, CardTitle } from '../components/ui/card';
@@ -5,10 +6,20 @@ import { User, Edit, Settings, Award, TrendingUp, Calendar } from 'lucide-react'
 import { Button } from '../components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '../components/ui/avatar';
 import { Progress } from '../components/ui/progress';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '../components/ui/dialog';
+import { Input } from '../components/ui/input';
+import { Label } from '../components/ui/label';
 
 export default function Perfil() {
   // TODO: Fetch user profile from API - GET /api/user/profile
-  const mockUser = {
+  const [mockUser, setMockUser] = useState({
     name: 'Juan Pérez',
     email: 'juan@email.com',
     avatar: null,
@@ -27,6 +38,41 @@ export default function Perfil() {
       { id: 2, name: '50 entrenamientos', description: 'Alcanzaste 50 entrenamientos', icon: '💪' },
       { id: 3, name: 'Racha de 7 días', description: 'Entrenaste 7 días seguidos', icon: '🔥' },
     ],
+  });
+
+  const [isEditStatsDialogOpen, setIsEditStatsDialogOpen] = useState(false);
+  const [editedStats, setEditedStats] = useState({
+    weight: mockUser.stats.weight,
+    height: mockUser.stats.height,
+    age: mockUser.stats.age,
+  });
+
+  const calculateBMI = (weight: number, height: number) => {
+    const heightInMeters = height / 100;
+    return (weight / (heightInMeters * heightInMeters)).toFixed(1);
+  };
+
+  const handleSaveStats = () => {
+    // TODO: Save updated stats to API - PUT /api/user/stats
+    setMockUser({
+      ...mockUser,
+      stats: {
+        ...mockUser.stats,
+        weight: editedStats.weight,
+        height: editedStats.height,
+        age: editedStats.age,
+      },
+    });
+    setIsEditStatsDialogOpen(false);
+  };
+
+  const handleOpenEditStats = () => {
+    setEditedStats({
+      weight: mockUser.stats.weight,
+      height: mockUser.stats.height,
+      age: mockUser.stats.age,
+    });
+    setIsEditStatsDialogOpen(true);
   };
 
   return (
@@ -85,10 +131,21 @@ export default function Perfil() {
         <div className="grid md:grid-cols-3 gap-6">
           <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
             <CardHeader>
-              <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
-                <TrendingUp className="h-5 w-5 text-emerald-500" />
-                Estadísticas Físicas
-              </CardTitle>
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-emerald-500" />
+                  Estadísticas Físicas
+                </CardTitle>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleOpenEditStats}
+                  className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10"
+                >
+                  <Edit className="h-4 w-4 mr-1" />
+                  Editar
+                </Button>
+              </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between">
@@ -105,7 +162,9 @@ export default function Perfil() {
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600 dark:text-slate-400">IMC</span>
-                <span className="text-slate-900 dark:text-white">26.2</span>
+                <span className="text-slate-900 dark:text-white">
+                  {calculateBMI(mockUser.stats.weight, mockUser.stats.height)}
+                </span>
               </div>
             </CardContent>
           </Card>
@@ -183,6 +242,79 @@ export default function Perfil() {
           </CardContent>
         </Card>
       </div>
+
+      {/* Edit Stats Dialog */}
+      <Dialog open={isEditStatsDialogOpen} onOpenChange={setIsEditStatsDialogOpen}>
+        <DialogContent className="sm:max-w-[425px] bg-background border-border">
+          <DialogHeader>
+            <DialogTitle className="text-foreground">Actualizar Estadísticas Físicas</DialogTitle>
+            <DialogDescription className="text-muted-foreground">
+              Actualiza tus datos físicos para un seguimiento más preciso
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="weight" className="text-foreground">Peso (kg)</Label>
+              <Input
+                id="weight"
+                type="number"
+                step="0.1"
+                value={editedStats.weight}
+                onChange={(e) => setEditedStats({ ...editedStats, weight: parseFloat(e.target.value) || 0 })}
+                className="bg-background border-border text-foreground"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="height" className="text-foreground">Altura (cm)</Label>
+              <Input
+                id="height"
+                type="number"
+                value={editedStats.height}
+                onChange={(e) => setEditedStats({ ...editedStats, height: parseInt(e.target.value) || 0 })}
+                className="bg-background border-border text-foreground"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label htmlFor="age" className="text-foreground">Edad (años)</Label>
+              <Input
+                id="age"
+                type="number"
+                value={editedStats.age}
+                onChange={(e) => setEditedStats({ ...editedStats, age: parseInt(e.target.value) || 0 })}
+                className="bg-background border-border text-foreground"
+              />
+            </div>
+
+            {editedStats.weight > 0 && editedStats.height > 0 && (
+              <div className="p-4 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg border border-emerald-500/30">
+                <p className="text-sm text-muted-foreground mb-1">IMC calculado</p>
+                <p className="text-2xl text-foreground">
+                  {calculateBMI(editedStats.weight, editedStats.height)}
+                </p>
+              </div>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditStatsDialogOpen(false)}
+              className="border-border text-foreground hover:bg-accent"
+            >
+              Cancelar
+            </Button>
+            <Button
+              onClick={handleSaveStats}
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+            >
+              Guardar Cambios
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </AppLayout>
   );
 }
