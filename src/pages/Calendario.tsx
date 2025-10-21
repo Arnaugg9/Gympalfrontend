@@ -203,7 +203,10 @@ export default function Calendario() {
                 const day = i + 1;
                 const dateStr = `${currentMonth.getFullYear()}-${String(currentMonth.getMonth() + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
                 const workout = mockWorkouts[dateStr];
-                const isToday = day === 21;
+                const today = new Date();
+                const isToday = day === today.getDate() && 
+                               currentMonth.getMonth() === today.getMonth() && 
+                               currentMonth.getFullYear() === today.getFullYear();
 
                 return (
                   <button

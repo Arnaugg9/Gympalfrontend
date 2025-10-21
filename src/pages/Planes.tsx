@@ -71,43 +71,6 @@ export default function Planes() {
           <p className="text-slate-600 dark:text-slate-400">Elige el plan perfecto para tus objetivos</p>
         </div>
 
-        {/* Quick Actions */}
-        <div className="grid md:grid-cols-3 gap-4">
-          <Link to="/planes/actual">
-            <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-emerald-500/50 transition-colors cursor-pointer">
-              <CardContent className="pt-6">
-                <div className="bg-purple-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-3">
-                  <CreditCard className="h-6 w-6 text-purple-500" />
-                </div>
-                <h3 className="text-slate-900 dark:text-white mb-1">Ver Plan Actual</h3>
-                <p className="text-slate-600 dark:text-slate-400 text-sm">Plan-estado de la app actual</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Link to="/planes/elegir">
-            <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-emerald-500/50 transition-colors cursor-pointer">
-              <CardContent className="pt-6">
-                <div className="bg-purple-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-3">
-                  <Star className="h-6 w-6 text-purple-500" />
-                </div>
-                <h3 className="text-slate-900 dark:text-white mb-1">Elegir Plan</h3>
-                <p className="text-slate-600 dark:text-slate-400 text-sm">Seleccionar nuevo plan</p>
-              </CardContent>
-            </Card>
-          </Link>
-
-          <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 cursor-pointer">
-            <CardContent className="pt-6">
-              <div className="bg-purple-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-3">
-                <CreditCard className="h-6 w-6 text-purple-500" />
-              </div>
-              <h3 className="text-slate-900 dark:text-white mb-1">Proceso de Pago</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm">Completar compra</p>
-            </CardContent>
-          </Card>
-        </div>
-
         {/* Plans */}
         <div className="grid md:grid-cols-3 gap-6">
           {mockPlans.map((plan) => {

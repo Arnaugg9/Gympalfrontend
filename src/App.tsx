@@ -5,6 +5,7 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Onboarding from './pages/Onboarding';
 import Dashboard from './pages/Dashboard';
+import EntrenoHoy from './pages/EntrenoHoy';
 import Rutinas from './pages/Rutinas';
 import VerRutinas from './pages/VerRutinas';
 import VerEjercicio from './pages/VerEjercicio';
@@ -41,6 +42,7 @@ export default function App() {
         <Route path="/register" element={<Register />} />
         <Route path="/onboarding" element={<Onboarding />} />
         <Route path="/dashboard" element={<Dashboard />} />
+        <Route path="/entreno-hoy" element={<EntrenoHoy />} />
         
         {/* Rutinas */}
         <Route path="/rutinas" element={<Rutinas />} />
