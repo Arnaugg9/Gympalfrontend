@@ -15,10 +15,25 @@ const nextConfig = {
       },
     ],
   },
-  webpack: (config) => {
+  webpack: (config, { dir }) => {
+    // Use dir if available (provided by Next.js), otherwise fallback to __dirname
+    // dir is the project root directory where Next.js is running
+    const projectRoot = dir || __dirname;
+    const srcPath = path.resolve(projectRoot, 'src');
+    
+    // Ensure resolve.alias is an object
+    if (!config.resolve) {
+      config.resolve = {};
+    }
+    if (!config.resolve.alias) {
+      config.resolve.alias = {};
+    }
+    
+    // Set up the @ alias to point to src directory
+    // Merge with existing aliases instead of overwriting
     config.resolve.alias = {
       ...config.resolve.alias,
-      '@': path.resolve(__dirname, 'src'),
+      '@': srcPath,
       'vaul@1.1.2': 'vaul',
       'sonner@2.0.3': 'sonner',
       'recharts@2.15.2': 'recharts',
