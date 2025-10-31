@@ -12,16 +12,12 @@ WORKDIR /app
 COPY --from=deps /app/node_modules ./node_modules
 # Copy all source code and configuration files
 COPY src ./src
-COPY public ./public
-COPY next.config.mjs ./
-COPY tsconfig.json ./
-COPY tailwind.config.ts ./
-COPY postcss.config.js ./
-COPY components.json ./
-COPY package.json ./
-COPY next-env.d.ts ./
+# Copy configuration files
+COPY next.config.mjs tsconfig.json tailwind.config.ts postcss.config.js components.json package.json next-env.d.ts ./
 # Copy env file if it exists (wildcard won't fail if file doesn't exist)
 COPY .env.local* ./
+# Create empty public directory (Next.js optional static assets directory)
+RUN mkdir -p public
 RUN pnpm build
 
 FROM node:20-alpine AS runner
@@ -32,10 +28,12 @@ ENV NODE_ENV production
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
-# Copy necessary files
-COPY --from=build /app/public ./public
+# Copy necessary files from build stage
+# Next.js standalone output includes server.js and necessary runtime files
 COPY --from=build /app/.next/standalone ./
 COPY --from=build /app/.next/static ./.next/static
+# Public directory is optional for Next.js, create empty if needed
+RUN mkdir -p public
 
 USER nextjs
 
