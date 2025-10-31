@@ -8,8 +8,19 @@ RUN pnpm i --frozen-lockfile || pnpm i
 
 FROM deps AS build
 WORKDIR /app
-COPY . .
-# Copy env file if it exists (for build-time vars)
+# Copy node_modules from deps stage
+COPY --from=deps /app/node_modules ./node_modules
+# Copy all source code and configuration files
+COPY src ./src
+COPY public ./public
+COPY next.config.mjs ./
+COPY tsconfig.json ./
+COPY tailwind.config.ts ./
+COPY postcss.config.js ./
+COPY components.json ./
+COPY package.json ./
+COPY next-env.d.ts ./
+# Copy env file if it exists (wildcard won't fail if file doesn't exist)
 COPY .env.local* ./
 RUN pnpm build
 
