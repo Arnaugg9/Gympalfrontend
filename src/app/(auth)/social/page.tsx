@@ -392,10 +392,10 @@ export default function SocialPage() {
             </CardContent>
           </Card>
         ))}
-          {filtered.length === 0 && (
-            <div className="text-slate-400">No hay publicaciones.</div>
-          )}
-        </div>
+        {filtered.length === 0 && (
+          <div className="text-slate-400">No hay publicaciones.</div>
+        )}
+      </div>
       </div>
 
       {/* Publish Post Modal */}
