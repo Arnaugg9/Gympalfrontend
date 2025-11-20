@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button';
 import { InputWithIcon } from '@/components/shared/input-with-icon';
 import { PasswordInput } from '@/components/shared/password-input';
 import { login } from '../api/api';
+import { useAuthStore } from '@/lib/store/auth.store';
 
 type FormData = {
   email: string;
@@ -15,6 +16,7 @@ type FormData = {
 
 export default function LoginForm() {
   const router = useRouter();
+  const { setUser, setTokens } = useAuthStore();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [formData, setFormData] = useState<FormData>({
@@ -51,26 +53,31 @@ export default function LoginForm() {
 
     try {
       const res = await login(formData);
-      console.log('Login response:', res);
 
-      if (res?.token) {
-        console.log('Token received, redirecting to dashboard');
+      if (res?.accessToken) {
+        // Save tokens to store and localStorage
+        setTokens(res.accessToken, res.refreshToken);
 
-        // Save user info to localStorage for immediate use in dashboard
+        // Save user to store
         if (res?.user) {
-          const userName = res.user.fullName || res.user.full_name || res.user.username || res.user.email || 'User';
-          localStorage.setItem('user_name', userName);
-          localStorage.setItem('user_email', res.user.email);
-          if (res.user.id) localStorage.setItem('user_id', res.user.id);
-          console.log('User info saved:', userName);
+          setUser({
+            id: res.user.id,
+            email: res.user.email,
+            username: res.user.username,
+            full_name: res.user.fullName,
+            avatarUrl: res.user.avatarUrl,
+            emailVerified: res.user.emailVerified,
+          });
         }
 
-        router.push('/dashboard');
+        // Small delay to ensure state is persisted before redirect
+        setTimeout(() => {
+          router.push('/dashboard');
+        }, 100);
       } else {
         setError('No authentication token received. Please try again.');
       }
     } catch (err: any) {
-      console.error('Login error:', err);
       const errorCode = err?.response?.data?.code;
       const errorMessage = err?.response?.data?.error?.message || err?.message || 'Error signing in';
 

@@ -33,7 +33,7 @@ export default function WorkoutsPage() {
         setLoading(true);
         const list = await workoutsApi.list();
         if (!mounted) return;
-        const items = Array.isArray(list?.items) ? list.items : Array.isArray(list) ? list : [];
+        const items = Array.isArray(list?.data) ? list.data : Array.isArray(list) ? list : [];
         setRoutines(items);
       } catch {
         if (!mounted) return;
@@ -59,6 +59,15 @@ export default function WorkoutsPage() {
       }
     }
   };
+
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <LoadingSpinner size="lg" variant="dumbbell" />
+        <p className="text-slate-400 text-sm">{t('common.loading')}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-8">

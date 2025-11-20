@@ -1,6 +1,8 @@
 import { http } from '@/lib/http';
 import { apiLogger, logError } from '@/lib/logger';
 import type { ApiResponse } from '@/features/auth/types';
+import type * as Unified from '@/lib/types/unified.types';
+import * as transformers from '@/lib/transformers';
 
 export type PersonalInfo = {
   age: number;
@@ -48,11 +50,14 @@ export async function getPersonalData() {
 export async function getPersonalInfo() {
   apiLogger.info({ endpoint: '/api/v1/personal/info' }, 'Get personal info request');
   try {
-    const wrappedRes = await http.get<ApiResponse<PersonalInfo>>('/api/v1/personal/info');
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No personal info in response');
+    const wrappedRes = await http.get<ApiResponse<Unified.UserPersonalInfo>>('/api/v1/personal/info');
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No personal info in response');
+
+    // Transform personal info
+    const transformed = transformers.userTransformers.transformPersonalInfo(rawData);
     apiLogger.info({}, 'Get personal info success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/personal/info' });
     throw err;
@@ -65,11 +70,14 @@ export async function getPersonalInfo() {
 export async function updatePersonalInfo(request: Partial<PersonalInfo>) {
   apiLogger.info({ endpoint: '/api/v1/personal/info' }, 'Update personal info request');
   try {
-    const wrappedRes = await http.put<ApiResponse<PersonalInfo>>('/api/v1/personal/info', request);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No personal info in response');
+    const wrappedRes = await http.put<ApiResponse<Unified.UserPersonalInfo>>('/api/v1/personal/info', request);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No personal info in response');
+
+    // Transform personal info
+    const transformed = transformers.userTransformers.transformPersonalInfo(rawData);
     apiLogger.info({}, 'Update personal info success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/personal/info' });
     throw err;
@@ -82,11 +90,14 @@ export async function updatePersonalInfo(request: Partial<PersonalInfo>) {
 export async function getFitnessProfile() {
   apiLogger.info({ endpoint: '/api/v1/personal/fitness' }, 'Get fitness profile request');
   try {
-    const wrappedRes = await http.get<ApiResponse<FitnessProfile>>('/api/v1/personal/fitness');
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No fitness profile in response');
+    const wrappedRes = await http.get<ApiResponse<any>>('/api/v1/personal/fitness');
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No fitness profile in response');
+
+    // Transform fitness profile (using generic transformer)
+    const transformed = transformers.transformResponseKeys(rawData);
     apiLogger.info({}, 'Get fitness profile success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/personal/fitness' });
     throw err;
@@ -99,11 +110,14 @@ export async function getFitnessProfile() {
 export async function updateFitnessProfile(request: Partial<FitnessProfile>) {
   apiLogger.info({ endpoint: '/api/v1/personal/fitness' }, 'Update fitness profile request');
   try {
-    const wrappedRes = await http.put<ApiResponse<FitnessProfile>>('/api/v1/personal/fitness', request);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No fitness profile in response');
+    const wrappedRes = await http.put<ApiResponse<any>>('/api/v1/personal/fitness', request);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No fitness profile in response');
+
+    // Transform fitness profile (using generic transformer)
+    const transformed = transformers.transformResponseKeys(rawData);
     apiLogger.info({}, 'Update fitness profile success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/personal/fitness' });
     throw err;

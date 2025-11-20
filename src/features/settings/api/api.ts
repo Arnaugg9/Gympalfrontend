@@ -1,6 +1,8 @@
 import { http } from '@/lib/http';
 import { apiLogger, logError } from '@/lib/logger';
 import type { ApiResponse } from '@/features/auth/types';
+import type * as Unified from '@/lib/types/unified.types';
+import * as transformers from '@/lib/transformers';
 
 export type Settings = {
   id: string;
@@ -27,37 +29,20 @@ export type PrivacySettings = {
   showStats: boolean;
 };
 
-export type UserProfile = {
-  id: string;
-  email: string;
-  username: string;
-  fullName: string;
-  bio?: string;
-  avatar?: string;
-  fitnessLevel?: string;
-  dateOfBirth?: string;
-  gender?: string;
-  height?: number;
-  weight?: number;
-  createdAt?: string;
-  stats?: {
-    totalWorkouts: number;
-    totalExercises: number;
-    totalPosts: number;
-  };
-};
-
 /**
  * Get all user settings
  */
 export async function getSettings() {
   apiLogger.info({ endpoint: '/api/v1/settings' }, 'Get settings request');
   try {
-    const wrappedRes = await http.get<ApiResponse<Settings>>('/api/v1/settings');
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No settings in response');
+    const wrappedRes = await http.get<ApiResponse<any>>('/api/v1/settings');
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No settings in response');
+
+    // Transform settings (using generic transformer)
+    const transformed = transformers.transformResponseKeys(rawData);
     apiLogger.info({}, 'Get settings success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/settings' });
     throw err;
@@ -70,11 +55,14 @@ export async function getSettings() {
 export async function updateSettings(settings: Partial<Settings>) {
   apiLogger.info({ endpoint: '/api/v1/settings' }, 'Update settings request');
   try {
-    const wrappedRes = await http.put<ApiResponse<Settings>>('/api/v1/settings', settings);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No settings in response');
+    const wrappedRes = await http.put<ApiResponse<any>>('/api/v1/settings', settings);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No settings in response');
+
+    // Transform settings (using generic transformer)
+    const transformed = transformers.transformResponseKeys(rawData);
     apiLogger.info({}, 'Update settings success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/settings' });
     throw err;
@@ -87,11 +75,14 @@ export async function updateSettings(settings: Partial<Settings>) {
 export async function getNotificationSettings() {
   apiLogger.info({ endpoint: '/api/v1/settings/notifications' }, 'Get notification settings request');
   try {
-    const wrappedRes = await http.get<ApiResponse<{ notifications: NotificationSettings }>>('/api/v1/settings/notifications');
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No notification settings in response');
+    const wrappedRes = await http.get<ApiResponse<{ notifications: any }>>('/api/v1/settings/notifications');
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No notification settings in response');
+
+    // Transform notification settings
+    const transformed = transformers.transformResponseKeys(rawData);
     apiLogger.info({}, 'Get notification settings success');
-    return data.notifications;
+    return transformed.notifications;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/settings/notifications' });
     throw err;
@@ -104,11 +95,14 @@ export async function getNotificationSettings() {
 export async function updateNotificationSettings(settings: Partial<NotificationSettings>) {
   apiLogger.info({ endpoint: '/api/v1/settings/notifications' }, 'Update notification settings request');
   try {
-    const wrappedRes = await http.put<ApiResponse<{ notifications: NotificationSettings }>>('/api/v1/settings/notifications', settings);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No notification settings in response');
+    const wrappedRes = await http.put<ApiResponse<{ notifications: any }>>('/api/v1/settings/notifications', settings);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No notification settings in response');
+
+    // Transform notification settings
+    const transformed = transformers.transformResponseKeys(rawData);
     apiLogger.info({}, 'Update notification settings success');
-    return data.notifications;
+    return transformed.notifications;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/settings/notifications' });
     throw err;
@@ -121,11 +115,14 @@ export async function updateNotificationSettings(settings: Partial<NotificationS
 export async function getPrivacySettings() {
   apiLogger.info({ endpoint: '/api/v1/settings/privacy' }, 'Get privacy settings request');
   try {
-    const wrappedRes = await http.get<ApiResponse<{ privacy: PrivacySettings }>>('/api/v1/settings/privacy');
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No privacy settings in response');
+    const wrappedRes = await http.get<ApiResponse<{ privacy: any }>>('/api/v1/settings/privacy');
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No privacy settings in response');
+
+    // Transform privacy settings
+    const transformed = transformers.transformResponseKeys(rawData);
     apiLogger.info({}, 'Get privacy settings success');
-    return data.privacy;
+    return transformed.privacy;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/settings/privacy' });
     throw err;
@@ -138,11 +135,14 @@ export async function getPrivacySettings() {
 export async function updatePrivacySettings(settings: Partial<PrivacySettings>) {
   apiLogger.info({ endpoint: '/api/v1/settings/privacy' }, 'Update privacy settings request');
   try {
-    const wrappedRes = await http.put<ApiResponse<{ privacy: PrivacySettings }>>('/api/v1/settings/privacy', settings);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No privacy settings in response');
+    const wrappedRes = await http.put<ApiResponse<{ privacy: any }>>('/api/v1/settings/privacy', settings);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No privacy settings in response');
+
+    // Transform privacy settings
+    const transformed = transformers.transformResponseKeys(rawData);
     apiLogger.info({}, 'Update privacy settings success');
-    return data.privacy;
+    return transformed.privacy;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/settings/privacy' });
     throw err;
@@ -155,11 +155,14 @@ export async function updatePrivacySettings(settings: Partial<PrivacySettings>) 
 export async function getUserProfile() {
   apiLogger.info({ endpoint: '/api/v1/users/profile' }, 'Get user profile request');
   try {
-    const wrappedRes = await http.get<ApiResponse<UserProfile>>('/api/v1/users/profile');
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No profile in response');
+    const wrappedRes = await http.get<ApiResponse<Unified.UserProfile>>('/api/v1/users/profile');
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No profile in response');
+
+    // Transform user profile
+    const transformed = transformers.userTransformers.transformProfile(rawData);
     apiLogger.info({}, 'Get user profile success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/users/profile' });
     throw err;
@@ -169,14 +172,17 @@ export async function getUserProfile() {
 /**
  * Update user profile
  */
-export async function updateUserProfile(profile: Partial<UserProfile>) {
+export async function updateUserProfile(profile: Partial<Unified.UpdateProfileRequest>) {
   apiLogger.info({ endpoint: '/api/v1/users/profile' }, 'Update user profile request');
   try {
-    const wrappedRes = await http.put<ApiResponse<UserProfile>>('/api/v1/users/profile', profile);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No profile in response');
+    const wrappedRes = await http.put<ApiResponse<Unified.UserProfile>>('/api/v1/users/profile', profile);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No profile in response');
+
+    // Transform user profile
+    const transformed = transformers.userTransformers.transformProfile(rawData);
     apiLogger.info({}, 'Update user profile success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/users/profile' });
     throw err;

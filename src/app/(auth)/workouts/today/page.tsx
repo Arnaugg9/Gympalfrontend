@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -11,11 +12,22 @@ import { getDashboardStats } from '@/features/dashboard/api/api';
 
 export default function TodayWorkoutPage() {
   const { t } = useTranslation();
+  const searchParams = useSearchParams();
   const [loading, setLoading] = useState(true);
   const [todayWorkout, setTodayWorkout] = useState<any>(null);
   const [weekStats, setWeekStats] = useState<any>({});
   const [monthStats, setMonthStats] = useState<any>({});
   const [streak, setStreak] = useState<number>(0);
+  const [refreshKey, setRefreshKey] = useState(0);
+
+  // Trigger refresh when returning from select page
+  useEffect(() => {
+    const refresh = searchParams.get('refresh');
+    if (refresh) {
+      setRefreshKey(prev => prev + 1);
+      window.history.replaceState({}, '', '/workouts/today');
+    }
+  }, [searchParams]);
 
   useEffect(() => {
     let mounted = true;
@@ -28,11 +40,11 @@ export default function TodayWorkoutPage() {
     (async () => {
       try {
         const [calendarRes, weekStatsRes, monthStatsRes] = await Promise.all([
-          http.get<any>(`/api/v1/dashboard/calendar?month=${month}&year=${year}`).catch(() => null),
-          getDashboardStats({ period: 'week' }).catch(() => null),
-          getDashboardStats({ period: 'month' }).catch(() => null),
+          http.get<any>(`/api/v1/calendar?month=${month}&year=${year}`).catch(() => null),
+          getDashboardStats('week').catch(() => null),
+          getDashboardStats('month').catch(() => null),
         ]);
-        
+
         if (!mounted) return;
 
         // Find today's workout from calendar
@@ -40,23 +52,24 @@ export default function TodayWorkoutPage() {
         const todayEntry = calendarData.find((d: any) => d.date === dateStr);
         if (todayEntry?.workout) {
           setTodayWorkout(todayEntry.workout);
+        } else {
+          setTodayWorkout(null);
         }
 
-        setWeekStats(weekStatsRes?.data || {});
-        setMonthStats(monthStatsRes?.data || {});
+        setWeekStats(weekStatsRes || {});
+        setMonthStats(monthStatsRes || {});
 
         // Streak calculation - would need backend endpoint for accurate streak
-        const workoutsThisWeek = weekStatsRes?.data?.total_workouts || 0;
+        const workoutsThisWeek = weekStatsRes?.total_workouts || 0;
         setStreak(workoutsThisWeek > 0 ? 7 : 0);
       } catch (err) {
-        console.error('Error loading today workout:', err);
       } finally {
         if (mounted) setLoading(false);
       }
     })();
 
     return () => { mounted = false; };
-  }, []);
+  }, [refreshKey]);
 
   const today = new Date();
   const dateStr = today.toLocaleDateString('es-ES', { 
@@ -108,7 +121,7 @@ export default function TodayWorkoutPage() {
                 </p>
               </div>
               <div className="flex gap-3 mt-4">
-                <Link href="/workouts/new">
+                <Link href="/workouts/select">
                   <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white">
                     <Plus className="h-4 w-4 mr-2" />
                     {t('workouts.addWorkout')}

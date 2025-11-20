@@ -1,29 +1,8 @@
 import { http } from '@/lib/http';
 import { apiLogger, logError } from '@/lib/logger';
 import type { ApiResponse } from '@/features/auth/types';
-
-export type Exercise = {
-  id: string;
-  user_id: string;
-  name: string;
-  description?: string;
-  muscle_group?: string;
-  equipment?: string[];
-  difficulty?: string;
-  tags?: string[];
-  is_public: boolean;
-  created_at: string;
-  updated_at: string;
-};
-
-export type ExerciseCatalog = {
-  id: string;
-  name: string;
-  description?: string;
-  muscle_group?: string;
-  equipment?: string[];
-  difficulty?: string;
-};
+import type * as Unified from '@/lib/types/unified.types';
+import * as transformers from '@/lib/transformers';
 
 export type CreateExerciseRequest = {
   name: string;
@@ -33,18 +12,6 @@ export type CreateExerciseRequest = {
   difficulty?: string;
   tags?: string[];
   is_public: boolean;
-};
-
-export type PaginatedExercises = {
-  data: Exercise[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
 };
 
 /**
@@ -115,11 +82,24 @@ export async function listExercises(page: number = 1, limit: number = 10, filter
       ...(filters?.muscleGroup && { muscleGroup: filters.muscleGroup }),
       ...(filters?.equipment && { equipment: filters.equipment }),
     });
-    const wrappedRes = await http.get<ApiResponse<PaginatedExercises>>(`/api/v1/exercises?${params}`);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No exercises in response');
+    const wrappedRes = await http.get<any>(`/api/v1/exercises?${params}`);
+
+    // Handle the response which has structure: { success, data: [...], pagination: {...}, metadata: {...} }
+    const exercises = wrappedRes?.data || [];
+    const pagination = wrappedRes?.pagination || { page, limit, total: exercises.length };
+
+    if (!exercises || !Array.isArray(exercises)) {
+      throw new Error('No exercises in response');
+    }
+
+    // Transform exercises directly
+    const transformed = exercises.map((ex: any) => transformers.exerciseTransformers.transformExercise(ex));
+
     apiLogger.info({}, 'List exercises success');
-    return data;
+    return {
+      data: transformed,
+      pagination,
+    };
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/exercises' });
     throw err;
@@ -132,11 +112,14 @@ export async function listExercises(page: number = 1, limit: number = 10, filter
 export async function createExercise(request: CreateExerciseRequest) {
   apiLogger.info({ endpoint: '/api/v1/exercises' }, 'Create exercise request');
   try {
-    const wrappedRes = await http.post<ApiResponse<Exercise>>('/api/v1/exercises', request);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No exercise in response');
+    const wrappedRes = await http.post<ApiResponse<Unified.Exercise>>('/api/v1/exercises', request);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No exercise in response');
+
+    // Transform exercise
+    const transformed = transformers.exerciseTransformers.transformExercise(rawData);
     apiLogger.info({}, 'Create exercise success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/exercises' });
     throw err;
@@ -149,11 +132,14 @@ export async function createExercise(request: CreateExerciseRequest) {
 export async function getExercise(id: string) {
   apiLogger.info({ endpoint: `/api/v1/exercises/${id}` }, 'Get exercise request');
   try {
-    const wrappedRes = await http.get<ApiResponse<Exercise>>(`/api/v1/exercises/${id}`);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No exercise in response');
+    const wrappedRes = await http.get<ApiResponse<Unified.Exercise>>(`/api/v1/exercises/${id}`);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No exercise in response');
+
+    // Transform exercise
+    const transformed = transformers.exerciseTransformers.transformExercise(rawData);
     apiLogger.info({}, 'Get exercise success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: `/api/v1/exercises/${id}` });
     throw err;
@@ -166,11 +152,14 @@ export async function getExercise(id: string) {
 export async function updateExercise(id: string, request: Partial<CreateExerciseRequest>) {
   apiLogger.info({ endpoint: `/api/v1/exercises/${id}` }, 'Update exercise request');
   try {
-    const wrappedRes = await http.put<ApiResponse<Exercise>>(`/api/v1/exercises/${id}`, request);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No exercise in response');
+    const wrappedRes = await http.put<ApiResponse<Unified.Exercise>>(`/api/v1/exercises/${id}`, request);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No exercise in response');
+
+    // Transform exercise
+    const transformed = transformers.exerciseTransformers.transformExercise(rawData);
     apiLogger.info({}, 'Update exercise success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: `/api/v1/exercises/${id}` });
     throw err;

@@ -1,3 +1,19 @@
+/**
+ * RegisterForm component
+ *
+ * Simple client-side registration form used on the public register page.
+ * Responsibilities:
+ * - Collect user input (name, email, username, password, optional profile fields)
+ * - Validate input locally to provide fast feedback to the user
+ * - Call `features/auth/api.register` to create the account on the server
+ * - Display friendly success / error messages and redirect to the login page
+ *
+ * Notes:
+ * - The form auto-generates a username from the provided name or email to
+ *   improve UX; the generated username may still be adjusted by the user.
+ * - Password strength and other advanced checks are intentionally kept
+ *   minimal here and can be extended in `validateForm`.
+ */
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -119,13 +135,11 @@ export default function RegisterForm() {
       };
 
       const res = await registerUser(payload);
-
-      if (res?.emailConfirmationRequired) {
-        setSuccess('Account created! Please check your email to verify your account.');
-        setTimeout(() => {
-          router.replace('/login');
-        }, 3000);
-      }
+      // Show success and redirect to login regardless of backend flags
+      setSuccess('Account created! Please check your email to verify your account. Redirecting to login...');
+      setTimeout(() => {
+        router.replace('/login');
+      }, 2000);
     } catch (err: any) {
       setError(err?.response?.data?.error?.message || err?.message || 'Error registering');
     } finally {

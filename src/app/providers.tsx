@@ -7,6 +7,7 @@ import { Toaster } from '@/components/ui/sonner';
 import { I18nextProvider } from 'react-i18next';
 import { useState } from 'react';
 import i18n from '@/lib/i18n';
+import { AuthProvider } from '@/components/providers/AuthProvider';
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [queryClient] = useState(
@@ -30,7 +31,9 @@ export function Providers({ children }: { children: React.ReactNode }) {
             enableSystem
             disableTransitionOnChange
           >
-            {children}
+            <AuthProvider>
+              {children}
+            </AuthProvider>
             <Toaster position="top-right" richColors />
           </ThemeProvider>
       </I18nextProvider>

@@ -3,12 +3,19 @@ import { socialApi } from '../api/api';
 
 // Get feed of posts
 export function usePosts(params?: { page?: number; limit?: number }) {
-  return useQuery({ queryKey: ['social','posts', params], queryFn: () => socialApi.posts(params) });
+  return useQuery({
+    queryKey: ['social', 'posts', params],
+    queryFn: () => socialApi.posts(params?.page || 1, params?.limit || 20),
+  });
 }
 
 // Get single post
 export function usePost(id: string) {
-  return useQuery({ queryKey: ['social','posts', id], queryFn: () => socialApi.post(id), enabled: !!id });
+  return useQuery({
+    queryKey: ['social', 'posts', id],
+    queryFn: () => socialApi.getPost(id),
+    enabled: !!id,
+  });
 }
 
 // Create a new post
@@ -38,10 +45,10 @@ export function useLikePost() {
 export function useUnlikePost() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (id: string) => socialApi.unlike(id),
+    mutationFn: (id: string) => socialApi.like(id),
     onSuccess: (_, id) => {
-      qc.invalidateQueries({ queryKey: ['social','posts'] });
-      qc.invalidateQueries({ queryKey: ['social','posts', id] });
+      qc.invalidateQueries({ queryKey: ['social', 'posts'] });
+      qc.invalidateQueries({ queryKey: ['social', 'posts', id] });
     },
   });
 }
@@ -49,8 +56,8 @@ export function useUnlikePost() {
 // Get comments for a post
 export function useComments(postId: string, params?: { page?: number; limit?: number }) {
   return useQuery({
-    queryKey: ['social','posts', postId, 'comments', params],
-    queryFn: () => socialApi.comments(postId, params),
+    queryKey: ['social', 'posts', postId, 'comments', params],
+    queryFn: () => socialApi.comments(postId),
     enabled: !!postId,
   });
 }
@@ -60,10 +67,10 @@ export function useAddComment() {
   const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ postId, content }: { postId: string; content: string }) =>
-      socialApi.addComment(postId, { content }),
+      socialApi.createComment(postId, { content }),
     onSuccess: (_, { postId }) => {
-      qc.invalidateQueries({ queryKey: ['social','posts', postId, 'comments'] });
-      qc.invalidateQueries({ queryKey: ['social','posts', postId] });
+      qc.invalidateQueries({ queryKey: ['social', 'posts', postId, 'comments'] });
+      qc.invalidateQueries({ queryKey: ['social', 'posts', postId] });
     },
   });
 }

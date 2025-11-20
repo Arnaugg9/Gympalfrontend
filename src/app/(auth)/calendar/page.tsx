@@ -5,6 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Dumbbell, Check, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useEffect, useMemo, useState } from 'react';
 import {
   Dialog,
@@ -17,16 +18,12 @@ import {
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useRouter } from 'next/navigation';
-import { http } from '@/lib/http';
 import { workoutsApi } from '@/features/workouts/api/api';
+import { calendarApi } from '@/features/calendar/api/api';
 import { useTranslation } from 'react-i18next';
+import type { CalendarDay } from '@/features/calendar/api/types';
 
-type CalendarEntry = {
-  date: string; // YYYY-MM-DD
-  hasWorkout?: boolean;
-  status?: 'scheduled' | 'completed';
-  routineName?: string;
-};
+type CalendarEntry = CalendarDay;
 
 export default function CalendarPage() {
   const { t } = useTranslation();
@@ -38,43 +35,71 @@ export default function CalendarPage() {
   const [isViewWorkoutDialogOpen, setIsViewWorkoutDialogOpen] = useState(false);
   const [calendarData, setCalendarData] = useState<CalendarEntry[]>([]);
   const [routines, setRoutines] = useState<Array<{ id: string; name: string; exercises?: number }>>([]);
+  const [loading, setLoading] = useState(true);
+  const [addError, setAddError] = useState('');
+  const [addSuccess, setAddSuccess] = useState('');
+  const [toast, setToast] = useState<{ message: string; type: 'success' | 'error' } | null>(null);
 
   useEffect(() => {
     let mounted = true;
     const year = currentMonth.getFullYear();
-    const month = String(currentMonth.getMonth() + 1).padStart(2, '0');
-    (async () => {
-      try {
-        // GET /api/v1/dashboard/calendar
-        const res = await http.get<any>(`/api/v1/dashboard/calendar?month=${month}&year=${year}`);
-        if (!mounted) return;
-        const entries: CalendarEntry[] = Array.isArray(res?.days)
-          ? res.days.map((d: any) => ({
-              date: d?.date,
-              hasWorkout: !!d?.workout,
-              status: d?.workout?.completed ? 'completed' : d?.workout ? 'scheduled' : undefined,
-              routineName: d?.workout?.name || d?.workout?.routine || undefined,
-            }))
-          : [];
-        setCalendarData(entries);
-      } catch {
-        if (!mounted) return;
-        setCalendarData([]);
-      }
-    })();
+    const month = currentMonth.getMonth() + 1;
 
-    (async () => {
+    setLoading(true);
+
+    /**
+     * Fetches and updates calendar data
+     */
+    const loadCalendarData = async () => {
       try {
-        // GET /api/v1/workouts
+        const days = await calendarApi.getMonth(month, year);
+        if (!mounted) return;
+        setCalendarData(days);
+        return true;
+      } catch (err) {
+        if (mounted) setCalendarData([]);
+        return false;
+      }
+    };
+
+    /**
+     * Fetches and updates available workouts
+     */
+    const loadWorkouts = async () => {
+      try {
         const list = await workoutsApi.list();
         if (!mounted) return;
-        const mapped = Array.isArray(list?.items) ? list.items : Array.isArray(list) ? list : [];
-        setRoutines(mapped.map((w: any) => ({ id: String(w.id || w.uuid || w._id || w.name), name: w.name || 'Workout' })));
-      } catch {
-        if (!mounted) return;
-        setRoutines([]);
+
+        // Handle different response formats
+        let workoutList = [];
+        if (list?.data && Array.isArray(list.data)) {
+          workoutList = list.data;
+        } else if (Array.isArray(list)) {
+          workoutList = list;
+        }
+
+        if (workoutList.length > 0) {
+          setRoutines(
+            workoutList.map((w: any) => ({
+              id: String(w.id || w.uuid || w._id || w.name),
+              name: w.name || 'Unnamed Workout',
+              exercises: w.exercises?.length || 0,
+            }))
+          );
+        }
+        if (mounted && workoutList.length === 0) setRoutines([]);
+
+        return true;
+      } catch (err) {
+        if (mounted) setRoutines([]);
+        return false;
       }
-    })();
+    };
+
+    // Load data in parallel
+    Promise.all([loadCalendarData(), loadWorkouts()]).finally(() => {
+      if (mounted) setLoading(false);
+    });
 
     return () => {
       mounted = false;
@@ -110,12 +135,40 @@ export default function CalendarPage() {
     }
   };
 
-  const handleAddWorkout = (routineId: string) => {
-    // No calendar POST endpoint in spec; navigate to create workflow with preselected date
+  const handleAddWorkout = async (routineId: string) => {
     setIsAddWorkoutDialogOpen(false);
-    const qs = selectedDate ? `?date=${encodeURIComponent(selectedDate)}&template=${encodeURIComponent(routineId)}` : '';
-    router.push(`/workouts/new${qs}`);
-    setSelectedDate(null);
+    setAddError('');
+
+    if (!selectedDate || !routineId) {
+      setSelectedDate(null);
+      return;
+    }
+
+    try {
+      // Add the workout to the calendar date
+      await calendarApi.addWorkout(routineId, selectedDate);
+
+      // Show a brief confirmation to the user
+      setAddSuccess('Workout scheduled');
+      setToast({ message: 'Workout scheduled', type: 'success' });
+      setTimeout(() => setAddSuccess(''), 3000);
+      setTimeout(() => setToast(null), 3000);
+
+      // Refresh the calendar data to reflect the changes
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth() + 1;
+      const updatedDays = await calendarApi.getMonth(month, year);
+      setCalendarData(updatedDays);
+      // Close dialog already done above; ensure success state is visible briefly
+    } catch (err) {
+      const msg = (err as any)?.response?.data?.error?.message || (err as any)?.message || 'Failed to add workout';
+      setAddError(String(msg));
+      setToast({ message: String(msg), type: 'error' });
+      setTimeout(() => setToast(null), 5000);
+      // Optionally show a user-friendly error message here
+    } finally {
+      setSelectedDate(null);
+    }
   };
 
   const handleSaveWorkoutData = () => {
@@ -128,16 +181,66 @@ export default function CalendarPage() {
     if (!open) setSelectedDate(null);
   };
 
-  const handleCompleteWorkout = () => {
-    // Completion handled within workout session pages in spec
-    setIsViewWorkoutDialogOpen(false);
-    setSelectedDate(null);
+  const handleCompleteWorkout = async () => {
+    if (!selectedDate) {
+      setIsViewWorkoutDialogOpen(false);
+      setSelectedDate(null);
+      return;
+    }
+
+    const entry = dayToEntry[selectedDate];
+    const scheduledId = entry?.id;
+    if (!scheduledId) {
+      setToast({ message: 'Unable to locate scheduled entry id', type: 'error' });
+      setTimeout(() => setToast(null), 4000);
+      return;
+    }
+
+    try {
+      await calendarApi.completeScheduled(String(scheduledId));
+      setToast({ message: 'Workout marked as completed! 🎉', type: 'success' });
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth() + 1;
+      const updatedDays = await calendarApi.getMonth(month, year);
+      setCalendarData(updatedDays);
+    } catch (err) {
+      setToast({ message: 'Failed to mark as completed', type: 'error' });
+    } finally {
+      setIsViewWorkoutDialogOpen(false);
+      setSelectedDate(null);
+      setTimeout(() => setToast(null), 3500);
+    }
   };
 
-  const handleDeleteWorkout = () => {
-    // Removing scheduled workout would be done via workouts APIs on the workout detail page
-    setIsViewWorkoutDialogOpen(false);
-    setSelectedDate(null);
+  const handleDeleteWorkout = async () => {
+    if (!selectedDate) {
+      setIsViewWorkoutDialogOpen(false);
+      setSelectedDate(null);
+      return;
+    }
+
+    const entry = dayToEntry[selectedDate];
+    const scheduledId = entry?.id;
+    if (!scheduledId) {
+      setToast({ message: 'Unable to locate scheduled entry id', type: 'error' });
+      setTimeout(() => setToast(null), 4000);
+      return;
+    }
+
+    try {
+      await calendarApi.deleteScheduled(String(scheduledId));
+      setToast({ message: 'Scheduled workout deleted', type: 'success' });
+      const year = currentMonth.getFullYear();
+      const month = currentMonth.getMonth() + 1;
+      const updatedDays = await calendarApi.getMonth(month, year);
+      setCalendarData(updatedDays);
+    } catch (err) {
+      setToast({ message: 'Failed to delete scheduled workout', type: 'error' });
+    } finally {
+      setIsViewWorkoutDialogOpen(false);
+      setSelectedDate(null);
+      setTimeout(() => setToast(null), 3500);
+    }
   };
 
   const previousMonth = () => {
@@ -188,6 +291,31 @@ export default function CalendarPage() {
     setCurrentMonth(newDate);
   };
 
+  // Determine handlers for prev/next based on viewMode (avoid nested ternaries in JSX)
+  const prevHandler = () => {
+    if (viewMode === 'day') return previousDay;
+    if (viewMode === 'week') return previousWeek;
+    if (viewMode === 'year') return previousYear;
+    return previousMonth;
+  };
+
+  const nextHandler = () => {
+    if (viewMode === 'day') return nextDay;
+    if (viewMode === 'week') return nextWeek;
+    if (viewMode === 'year') return nextYear;
+    return nextMonth;
+  };
+
+  // Compute CSS class for calendar cell to avoid nested ternaries
+  const getCellClass = (entry: CalendarEntry | undefined, isToday: boolean, isSelected = false) => {
+    // Selected state should be more opaque so it doesn't appear transparent in dialogs
+    if (isToday && isSelected) return 'border-emerald-500 bg-emerald-500/20 dark:bg-emerald-500/30 ring-1 ring-emerald-300';
+    if (isToday) return 'border-emerald-500 bg-emerald-500/10 dark:bg-emerald-500/20';
+    if (!entry?.hasWorkout) return 'border-slate-200 dark:border-slate-700 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 hover:bg-slate-100 dark:hover:bg-slate-700/50';
+    if (entry.status === 'completed') return isSelected ? 'border-blue-500 bg-blue-500/30 dark:bg-blue-500/40' : 'border-blue-500 bg-blue-500/10 dark:bg-blue-500/20 hover:bg-blue-500/20 dark:hover:bg-blue-500/30';
+    return isSelected ? 'border-purple-500 bg-purple-500/30 dark:bg-purple-500/40' : 'border-purple-500 bg-purple-500/10 dark:bg-purple-500/20 hover:bg-purple-500/20 dark:hover:bg-purple-500/30';
+  };
+
   // Helper function to get the start of the week (Monday)
   const getWeekStart = (date: Date) => {
     const d = new Date(date);
@@ -211,6 +339,15 @@ export default function CalendarPage() {
     return monthName;
   };
 
+  if (loading) {
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <LoadingSpinner size="lg" variant="dumbbell" />
+        <p className="text-slate-400 text-sm">{t('common.loading')}</p>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
@@ -218,6 +355,11 @@ export default function CalendarPage() {
           <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{t('calendar.title')}</h1>
           <p className="text-lg text-slate-600 dark:text-slate-400">{t('calendar.subtitle')}</p>
         </div>
+        {addSuccess && (
+          <div className="ml-6 mr-4 text-sm text-emerald-700 bg-emerald-500/10 border border-emerald-500/20 rounded px-3 py-2">
+            {addSuccess}
+          </div>
+        )}
         <Link href="/ai-chat">
           <Button className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-purple-500/50 transition-all">
             AI: {t('calendar.title')}
@@ -232,11 +374,10 @@ export default function CalendarPage() {
             key={mode}
             onClick={() => setViewMode(mode)}
             variant={viewMode === mode ? 'default' : 'outline'}
-            className={`capitalize ${
-              viewMode === mode
-                ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500'
-                : 'border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-            }`}
+            className={`capitalize ${viewMode === mode
+              ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500'
+              : 'border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+              }`}
           >
             {mode}
           </Button>
@@ -253,12 +394,7 @@ export default function CalendarPage() {
                 variant="outline"
                 size="sm"
                 className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                onClick={
-                  viewMode === 'day' ? previousDay :
-                  viewMode === 'week' ? previousWeek :
-                  viewMode === 'year' ? previousYear :
-                  previousMonth
-                }
+                onClick={prevHandler()}
               >
                 <ChevronLeft className="h-4 w-4" />
               </Button>
@@ -266,12 +402,7 @@ export default function CalendarPage() {
                 variant="outline"
                 size="sm"
                 className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                onClick={
-                  viewMode === 'day' ? nextDay :
-                  viewMode === 'week' ? nextWeek :
-                  viewMode === 'year' ? nextYear :
-                  nextMonth
-                }
+                onClick={nextHandler()}
               >
                 <ChevronRight className="h-4 w-4" />
               </Button>
@@ -294,7 +425,7 @@ export default function CalendarPage() {
                         <div className="p-4 rounded-lg border border-emerald-500 bg-emerald-500/10">
                           <div className="flex items-start justify-between">
                             <div>
-                              <h4 className="font-semibold text-slate-900 dark:text-white">{entry.routineName || 'Workout'}</h4>
+                              <h4 className="font-semibold text-slate-900 dark:text-white">{entry.workoutName || 'Workout'}</h4>
                               <p className={`text-sm mt-1 ${entry.status === 'completed' ? 'text-blue-500' : 'text-purple-500'}`}>
                                 Status: {entry.status === 'completed' ? 'Completed' : 'Scheduled'}
                               </p>
@@ -346,7 +477,7 @@ export default function CalendarPage() {
                         <h4 className="font-semibold text-slate-900 dark:text-white">{dayName}</h4>
                         {entry?.hasWorkout ? (
                           <p className={`text-sm mt-1 ${entry.status === 'completed' ? 'text-blue-500' : 'text-purple-500'}`}>
-                            {entry.routineName || 'Workout'} ({entry.status === 'completed' ? 'Completed' : 'Scheduled'})
+                            {entry.workoutName || 'Workout'} ({entry.status === 'completed' ? 'Completed' : 'Scheduled'})
                           </p>
                         ) : (
                           <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">No workout</p>
@@ -373,7 +504,7 @@ export default function CalendarPage() {
                 </div>
               ))}
               {Array.from({ length: firstDayOfMonth }).map((_, i) => (
-                <div key={`empty-${i}`} className="aspect-square" />
+                <div key={`empty-${currentMonth.getFullYear()}-${currentMonth.getMonth()}-${i}`} className="aspect-square" />
               ))}
 
               {Array.from({ length: daysInMonth }).map((_, i) => {
@@ -382,27 +513,21 @@ export default function CalendarPage() {
                 const entry = dayToEntry[dateStr];
                 const today = new Date();
                 const isToday = day === today.getDate() &&
-                               currentMonth.getMonth() === today.getMonth() &&
-                               currentMonth.getFullYear() === today.getFullYear();
+                  currentMonth.getMonth() === today.getMonth() &&
+                  currentMonth.getFullYear() === today.getFullYear();
+                const isSelected = selectedDate === dateStr;
+                const cellClass = getCellClass(entry, isToday, isSelected);
 
                 return (
                   <button
-                    key={day}
+                    key={dateStr}
                     onClick={() => handleDayClick(dateStr, !!entry?.hasWorkout)}
-                    className={`aspect-square p-2 rounded-lg border transition-all hover-lift ${
-                      isToday
-                        ? 'border-emerald-500 bg-emerald-500/10 dark:bg-emerald-500/20'
-                        : entry?.hasWorkout
-                        ? entry.status === 'completed'
-                          ? 'border-blue-500 bg-blue-500/10 dark:bg-blue-500/20 hover:bg-blue-500/20 dark:hover:bg-blue-500/30'
-                          : 'border-purple-500 bg-purple-500/10 dark:bg-purple-500/20 hover:bg-purple-500/20 dark:hover:bg-purple-500/30'
-                        : 'border-slate-200 dark:border-slate-700 hover:border-emerald-500/50 dark:hover:border-emerald-500/50 hover:bg-slate-100 dark:hover:bg-slate-700/50'
-                    }`}
+                    className={`aspect-square p-2 rounded-lg border transition-all hover-lift ${cellClass}`}
                   >
                     <div className="text-slate-900 dark:text-white text-sm mb-1">{day}</div>
                     {entry?.hasWorkout ? (
                       <div className={`text-xs ${entry.status === 'completed' ? 'text-blue-500' : 'text-purple-500'}`}>
-                        {entry.routineName || 'Workout'}
+                        {entry.workoutName || 'Workout'}
                       </div>
                     ) : (
                       <div className="flex items-center justify-center mt-1">
@@ -427,14 +552,16 @@ export default function CalendarPage() {
                   })
                   .filter(entry => entry?.hasWorkout);
 
+                const plural = workoutsInMonth.length === 1 ? '' : 's';
+
                 return (
-                  <div key={monthIndex} className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
+                  <div key={monthDate.toISOString()} className="p-4 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
                     <h4 className="font-semibold text-slate-900 dark:text-white mb-2">
                       {monthDate.toLocaleDateString('en-US', { month: 'long' })}
                     </h4>
                     <div className="space-y-2">
                       <p className="text-sm text-slate-600 dark:text-slate-400">
-                        {workoutsInMonth.length} workout{workoutsInMonth.length !== 1 ? 's' : ''}
+                        {workoutsInMonth.length} workout{plural}
                       </p>
                       <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                         <div
@@ -450,6 +577,15 @@ export default function CalendarPage() {
           )}
         </CardContent>
       </Card>
+
+      {/* Toast container */}
+      {toast && (
+        <div className="fixed right-4 bottom-6 z-50">
+          <div className={`max-w-sm px-4 py-3 rounded shadow-lg ${toast.type === 'success' ? 'bg-emerald-600 text-white' : 'bg-red-600 text-white'}`}>
+            {toast.message}
+          </div>
+        </div>
+      )}
 
       {/* Legend */}
       <Card className="glass-card card-gradient-emerald border-slate-200 dark:border-slate-700">
@@ -489,6 +625,12 @@ export default function CalendarPage() {
               })}
             </DialogDescription>
           </DialogHeader>
+
+          {addError && (
+            <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded p-3 mx-4 -mt-2">
+              {addError}
+            </div>
+          )}
 
           <ScrollArea className="max-h-[400px] pr-4">
             <div className="space-y-3">
@@ -551,20 +693,30 @@ export default function CalendarPage() {
 
       {/* View Workout Dialog */}
       <Dialog open={isViewWorkoutDialogOpen} onOpenChange={handleCloseWorkoutDialog}>
-        <DialogContent className="sm:max-w-[700px] bg-background border-border">
+        <DialogContent className="sm:max-w-[600px] bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700 overflow-hidden">
           {selectedDate && (() => {
             const entry = dayToEntry[selectedDate];
             if (!entry?.hasWorkout) return null;
 
+            const isCompleted = entry.status === 'completed';
+            const statusColor = isCompleted ? 'blue' : 'purple';
+
             return (
               <>
-                <DialogHeader>
+                {/* Header with gradient background */}
+                <div className="-mx-6 -mt-6 px-6 pt-6 pb-4 bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-900/50 dark:to-slate-800/50 border-b border-slate-200 dark:border-slate-700">
                   <div className="flex items-start justify-between">
-                    <div>
-                      <DialogTitle className="text-foreground mb-2">
-                        {entry.routineName || 'Workout'}
-                      </DialogTitle>
-                      <DialogDescription className="text-muted-foreground">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-3 mb-2">
+                        <div className={`p-2 rounded-lg bg-${statusColor}-500/10 dark:bg-${statusColor}-500/20`}>
+                          <Dumbbell className={`h-5 w-5 text-${statusColor}-500`} />
+                        </div>
+                        <DialogTitle className="text-slate-900 dark:text-white text-xl">
+                          {entry.workoutName || 'Workout'}
+                        </DialogTitle>
+                      </div>
+                      <DialogDescription className="text-slate-600 dark:text-slate-400 flex items-center gap-2">
+                        <CalendarIcon className="h-4 w-4" />
                         {new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
                           weekday: 'long',
                           day: 'numeric',
@@ -574,56 +726,92 @@ export default function CalendarPage() {
                       </DialogDescription>
                     </div>
                     <Badge
-                      variant={entry.status === 'completed' ? 'default' : 'secondary'}
-                      className={entry.status === 'completed' ? 'bg-blue-500 text-white' : 'bg-purple-500 text-white'}
+                      className={`${isCompleted
+                        ? 'bg-blue-500 hover:bg-blue-600'
+                        : 'bg-purple-500 hover:bg-purple-600'} text-white border-0 shadow-lg`}
                     >
-                      {entry.status === 'completed' ? 'Completed' : 'Scheduled'}
+                      {isCompleted ? (
+                        <>
+                          <Check className="h-3 w-3 mr-1" />
+                          Completed
+                        </>
+                      ) : (
+                        'Scheduled'
+                      )}
                     </Badge>
                   </div>
-                </DialogHeader>
+                </div>
 
-                <ScrollArea className="max-h-[500px] pr-4">
-                  <div className="space-y-4">
-                    <Card className="glass-card card-gradient-emerald border-border">
-                      <CardHeader>
-                        <CardTitle className="text-foreground flex items-center gap-2">
-                          <Dumbbell className="h-5 w-5 text-emerald-500" />
-                          Go to workout details
-                        </CardTitle>
-                      </CardHeader>
-                      <CardContent>
-                        <Button onClick={() => router.push('/workouts')} className="mt-2">Open Workouts</Button>
-                      </CardContent>
-                    </Card>
+                {/* Content */}
+                <div className="py-6 space-y-4">
+                  {/* Workout Info Card */}
+                  <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 dark:from-emerald-500/20 dark:to-emerald-600/20 border border-emerald-500/20">
+                    <div className="flex items-start justify-between">
+                      <div className="flex-1">
+                        <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-1">Workout Details</h4>
+                        <p className="text-sm text-slate-600 dark:text-slate-400">
+                          View full workout routine with exercises, sets, and reps
+                        </p>
+                      </div>
+                      <Button
+                        onClick={() => router.push(entry.workoutId ? `/workouts/${entry.workoutId}` : '/workouts')}
+                        className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg hover:shadow-emerald-500/50 transition-all"
+                        size="sm"
+                      >
+                        Open
+                      </Button>
+                    </div>
                   </div>
-                </ScrollArea>
 
-                <DialogFooter className="flex-col sm:flex-row gap-2 sm:justify-between">
-                  <Button
-                    variant="outline"
-                    onClick={handleDeleteWorkout}
-                    className="border-red-500/50 text-red-500 hover:bg-red-500/10 hover:border-red-500 sm:mr-auto"
-                  >
-                    <X className="h-4 w-4 mr-2" />
-                    Delete
-                  </Button>
-                  <div className="flex gap-2 flex-1 sm:flex-initial">
+                  {/* Status Message */}
+                  {isCompleted ? (
+                    <div className="p-4 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/20">
+                      <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
+                        <Check className="h-5 w-5" />
+                        <p className="text-sm font-medium">Great job! You've completed this workout. 🎉</p>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="p-4 rounded-lg bg-purple-500/10 dark:bg-purple-500/20 border border-purple-500/20">
+                      <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
+                        <CalendarIcon className="h-5 w-5" />
+                        <p className="text-sm font-medium">Ready for your workout? Mark it as complete when you're done!</p>
+                      </div>
+                    </div>
+                  )}
+                </div>
+
+                {/* Footer Actions */}
+                <div className="-mx-6 -mb-6 px-6 py-4 bg-slate-50 dark:bg-slate-900/50 border-t border-slate-200 dark:border-slate-700">
+                  <div className="flex items-center justify-between gap-3">
                     <Button
-                      variant="outline"
-                      onClick={() => handleCloseWorkoutDialog(false)}
-                      className="border-border text-foreground hover:bg-accent flex-1 sm:flex-initial"
+                      variant="ghost"
+                      onClick={handleDeleteWorkout}
+                      className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
                     >
-                      Close
+                      <X className="h-4 w-4 mr-2" />
+                      Delete Workout
                     </Button>
-                    <Button
-                      onClick={handleCompleteWorkout}
-                      className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white flex-1 sm:flex-initial"
-                    >
-                      <Check className="h-4 w-4 mr-2" />
-                      Complete
-                    </Button>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        onClick={() => handleCloseWorkoutDialog(false)}
+                        className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300"
+                      >
+                        Close
+                      </Button>
+                      {!isCompleted && (
+                        <Button
+                          onClick={handleCompleteWorkout}
+                          className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-emerald-500/50 transition-all"
+                        >
+                          <Check className="h-4 w-4 mr-2" />
+                          Mark as Complete
+                        </Button>
+                      )}
+                    </div>
                   </div>
-                </DialogFooter>
+                </div>
               </>
             );
           })()}

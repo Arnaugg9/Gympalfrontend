@@ -1,3 +1,13 @@
+/**
+ * Client-side logger wrapper
+ *
+ * Wraps `pino` to provide structured logs in the browser. Use `createLogger`
+ * to derive contextual child loggers. Common child loggers are exported for
+ * convenience (`authLogger`, `apiLogger`, `uiLogger`).
+ *
+ * The library is configured to produce object logs that are readable in the
+ * browser console – this keeps parity with server logs for easier debugging.
+ */
 import pino from 'pino';
 
 export const LOG_LEVELS = {

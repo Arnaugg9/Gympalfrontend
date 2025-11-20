@@ -16,33 +16,75 @@ import { workoutsApi } from '@/features/workouts/api/api';
 export default function WorkoutCreatePage() {
   const { t } = useTranslation();
   const router = useRouter();
-  const [routineName, setRoutineName] = useState('');
+  const [workoutName, setWorkoutName] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<any[]>([]);
   const [difficulty, setDifficulty] = useState('');
   const [description, setDescription] = useState('');
+  const [isInitialized, setIsInitialized] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
-  // Load selected exercises from sessionStorage when component mounts
+  // Load form data from localStorage when component mounts (only once)
   useEffect(() => {
     try {
-      const stored = sessionStorage.getItem('selectedWorkoutExercises');
-      if (stored) {
-        const exercises = JSON.parse(stored);
-        console.log('Loaded exercises from sessionStorage:', exercises);
+      // Load exercises
+      const storedExercises = localStorage.getItem('workoutFormExercises');
+      if (storedExercises) {
+        const exercises = JSON.parse(storedExercises);
         setSelectedExercises(exercises);
-        // Clear sessionStorage after loading
-        sessionStorage.removeItem('selectedWorkoutExercises');
       }
+
+      // Load form fields
+      const storedRoutineName = localStorage.getItem('workoutFormName');
+      if (storedRoutineName) {
+        setWorkoutName(storedRoutineName);
+      }
+
+      const storedDescription = localStorage.getItem('workoutFormDescription');
+      if (storedDescription) {
+        setDescription(storedDescription);
+      }
+
+      const storedDifficulty = localStorage.getItem('workoutFormDifficulty');
+      if (storedDifficulty) {
+        setDifficulty(storedDifficulty);
+      }
+
+      setIsInitialized(true);
     } catch (err) {
-      console.error('Error loading selected exercises:', err);
+      setIsInitialized(true);
     }
   }, []);
 
+  // Save form data to localStorage whenever it changes (but only after initialization)
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem('workoutFormName', workoutName);
+    }
+  }, [workoutName, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem('workoutFormDescription', description);
+    }
+  }, [description, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem('workoutFormDifficulty', difficulty);
+    }
+  }, [difficulty, isInitialized]);
+
+  useEffect(() => {
+    if (isInitialized) {
+      localStorage.setItem('workoutFormExercises', JSON.stringify(selectedExercises));
+    }
+  }, [selectedExercises, isInitialized]);
+
   const handleSubmit = async () => {
-    if (!routineName.trim()) {
-      setError('Routine name is required');
+    if (!workoutName.trim()) {
+      setError('Workout name is required');
       return;
     }
     if (selectedExercises.length === 0) {
@@ -63,18 +105,26 @@ export default function WorkoutCreatePage() {
           throw new Error(`Exercise "${ex.name}" is missing an ID`);
         }
 
-        return {
+        const exerciseData: any = {
           exercise_id: exerciseId,
           sets: parseInt(ex.sets) || 3,
           reps: parseInt(ex.reps) || 10,
-          weight: parseFloat(ex.weight) || 0,
         };
+
+        // Only include weight if it's provided and greater than 0
+        const weight = parseFloat(ex.weight);
+        if (weight && weight > 0) {
+          exerciseData.weight = weight;
+        }
+
+        return exerciseData;
       });
 
       // Prepare payload
       const payload: any = {
-        name: routineName.trim(),
+        name: workoutName.trim(),
         description: description.trim() || '',
+        duration_minutes: 60, // Default to 60 minutes
         exercises,
       };
 
@@ -83,18 +133,19 @@ export default function WorkoutCreatePage() {
         payload.difficulty = difficulty;
       }
 
-      console.log('Creating workout with payload:', payload);
-
       const result = await workoutsApi.create(payload);
-
-      console.log('Workout created successfully:', result);
 
       // Show success and redirect
       setError(''); // Clear error
+
+      // Clear localStorage data after successful creation
+      localStorage.removeItem('workoutFormName');
+      localStorage.removeItem('workoutFormDescription');
+      localStorage.removeItem('workoutFormDifficulty');
+      localStorage.removeItem('workoutFormExercises');
+
       router.push('/workouts');
     } catch (err: any) {
-      console.error('Error creating workout:', err);
-
       let msg = 'Error creating routine';
 
       if (err?.response?.data?.error?.message) {
@@ -140,8 +191,8 @@ export default function WorkoutCreatePage() {
                   id="name"
                   placeholder="E.g: Push Pull Legs"
                   className="bg-slate-900/50 border-slate-700 text-white placeholder-slate-500"
-                  value={routineName}
-                  onChange={(e) => setRoutineName(e.target.value)}
+                    value={workoutName}
+                  onChange={(e) => setWorkoutName(e.target.value)}
                   disabled={loading}
                 />
               </div>
@@ -248,7 +299,7 @@ export default function WorkoutCreatePage() {
               <Button
                 onClick={handleSubmit}
                 className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium"
-                disabled={!routineName.trim() || selectedExercises.length === 0 || loading}
+                disabled={!workoutName.trim() || selectedExercises.length === 0 || loading}
               >
                 {loading ? (
                   <div className="flex items-center gap-2">

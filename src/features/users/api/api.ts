@@ -1,24 +1,8 @@
 import { http } from '@/lib/http';
 import { apiLogger, logError } from '@/lib/logger';
 import type { ApiResponse } from '@/features/auth/types';
-
-export type UserProfile = {
-  id: string;
-  username: string;
-  full_name?: string;
-  avatar_url?: string;
-  bio?: string;
-  fitness_level?: string;
-  created_at: string;
-  updated_at: string;
-};
-
-export type UserStats = {
-  total_workouts: number;
-  total_exercises: number;
-  total_duration: number;
-  achievements: number;
-};
+import type * as Unified from '@/lib/types/unified.types';
+import * as transformers from '@/lib/transformers';
 
 export type UpdateProfileRequest = {
   full_name?: string;
@@ -28,29 +12,20 @@ export type UpdateProfileRequest = {
   fitness_level?: string;
 };
 
-export type PaginatedUsers = {
-  data: UserProfile[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
-};
-
 /**
  * Get current user profile
  */
 export async function getCurrentUserProfile() {
   apiLogger.info({ endpoint: '/api/v1/users/profile' }, 'Get current user profile request');
   try {
-    const wrappedRes = await http.get<ApiResponse<UserProfile>>('/api/v1/users/profile');
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No profile in response');
+    const wrappedRes = await http.get<ApiResponse<Unified.UserProfile>>('/api/v1/users/profile');
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No profile in response');
+
+    // Transform profile
+    const transformed = transformers.userTransformers.transformProfile(rawData);
     apiLogger.info({}, 'Get current user profile success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/users/profile' });
     throw err;
@@ -63,11 +38,14 @@ export async function getCurrentUserProfile() {
 export async function updateUserProfile(request: UpdateProfileRequest) {
   apiLogger.info({ endpoint: '/api/v1/users/profile' }, 'Update user profile request');
   try {
-    const wrappedRes = await http.put<ApiResponse<UserProfile>>('/api/v1/users/profile', request);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No profile in response');
+    const wrappedRes = await http.put<ApiResponse<Unified.UserProfile>>('/api/v1/users/profile', request);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No profile in response');
+
+    // Transform profile
+    const transformed = transformers.userTransformers.transformProfile(rawData);
     apiLogger.info({}, 'Update user profile success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/users/profile' });
     throw err;
@@ -80,11 +58,14 @@ export async function updateUserProfile(request: UpdateProfileRequest) {
 export async function getPublicUserProfile(userId: string) {
   apiLogger.info({ endpoint: `/api/v1/users/${userId}` }, 'Get public user profile request');
   try {
-    const wrappedRes = await http.get<ApiResponse<UserProfile>>(`/api/v1/users/${userId}`);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No profile in response');
+    const wrappedRes = await http.get<ApiResponse<Unified.UserProfile>>(`/api/v1/users/${userId}`);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No profile in response');
+
+    // Transform profile
+    const transformed = transformers.userTransformers.transformProfile(rawData);
     apiLogger.info({}, 'Get public user profile success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: `/api/v1/users/${userId}` });
     throw err;
@@ -102,11 +83,17 @@ export async function searchUsers(query: string, page: number = 1, limit: number
       page: page.toString(),
       limit: limit.toString(),
     });
-    const wrappedRes = await http.get<ApiResponse<PaginatedUsers>>(`/api/v1/users/search?${params}`);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No users in response');
+    const wrappedRes = await http.get<ApiResponse<Unified.PaginatedList<Unified.UserProfile>>>(`/api/v1/users/search?${params}`);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No users in response');
+
+    // Transform paginated users
+    const transformed = transformers.listTransformers.transformPaginatedList(
+      rawData,
+      (profile) => transformers.userTransformers.transformProfile(profile)
+    );
     apiLogger.info({}, 'Search users success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/users/search' });
     throw err;
@@ -119,11 +106,14 @@ export async function searchUsers(query: string, page: number = 1, limit: number
 export async function getUserStats(userId: string) {
   apiLogger.info({ endpoint: `/api/v1/users/${userId}/stats` }, 'Get user stats request');
   try {
-    const wrappedRes = await http.get<ApiResponse<UserStats>>(`/api/v1/users/${userId}/stats`);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No stats in response');
+    const wrappedRes = await http.get<ApiResponse<Unified.UserStats>>(`/api/v1/users/${userId}/stats`);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No stats in response');
+
+    // Transform stats (simple key transformation)
+    const transformed = transformers.transformResponseKeys(rawData);
     apiLogger.info({}, 'Get user stats success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: `/api/v1/users/${userId}/stats` });
     throw err;

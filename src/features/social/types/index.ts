@@ -14,6 +14,7 @@ export type Post = {
   userId?: string;
   likesCount?: number;
   commentsCount?: number;
+  reposts_count?: number;
   createdAt?: string;
   isLiked?: boolean;
 };

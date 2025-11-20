@@ -6,7 +6,10 @@ const __dirname = path.dirname(__filename);
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  output: 'standalone',
+  // On Windows creating symlinks for the `standalone` output can require
+  // elevated privileges. Disable standalone on Windows and only use it on
+  // non-Windows platforms where symlink creation is typically allowed.
+  output: process.platform === 'win32' ? undefined : 'standalone',
   
   // Optimize images
   images: {

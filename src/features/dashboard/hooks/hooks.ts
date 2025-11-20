@@ -5,8 +5,11 @@ export function useDashboard() {
   return useQuery({ queryKey: ['dashboard','root'], queryFn: () => getDashboard() });
 }
 
-export function useDashboardStats(params?: { period?: string; include_social?: boolean }) {
-  return useQuery({ queryKey: ['dashboard','stats', params], queryFn: () => getDashboardStats(params) });
+export function useDashboardStats(params?: { period?: 'week' | 'month' | 'year' | 'all'; include_social?: boolean }) {
+  return useQuery({
+    queryKey: ['dashboard','stats', params],
+    queryFn: () => getDashboardStats(params?.period || 'all', params?.include_social !== false)
+  });
 }
 
 

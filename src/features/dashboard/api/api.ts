@@ -1,13 +1,8 @@
 import { http } from '@/lib/http';
 import { apiLogger, logError } from '@/lib/logger';
 import type { ApiResponse } from '@/features/auth/types';
-
-export type DashboardStats = {
-  total_workouts: number;
-  total_exercises: number;
-  total_duration: number;
-  average_duration: number;
-};
+import type * as Unified from '@/lib/types/unified.types';
+import * as transformers from '@/lib/transformers';
 
 export type RecentActivity = {
   type: string;
@@ -16,7 +11,7 @@ export type RecentActivity = {
 };
 
 export type DashboardData = {
-  stats: DashboardStats;
+  stats: any;
   activity: RecentActivity[];
 };
 
@@ -26,11 +21,14 @@ export type DashboardData = {
 export async function getDashboard() {
   apiLogger.info({ endpoint: '/api/v1/dashboard' }, 'Get dashboard request');
   try {
-    const wrappedRes = await http.get<ApiResponse<DashboardData>>('/api/v1/dashboard');
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No dashboard data in response');
+    const wrappedRes = await http.get<ApiResponse<any>>('/api/v1/dashboard');
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No dashboard data in response');
+
+    // Transform dashboard data (using generic transformer)
+    const transformed = transformers.transformResponseKeys(rawData);
     apiLogger.info({}, 'Get dashboard success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/dashboard' });
     throw err;
@@ -47,11 +45,14 @@ export async function getDashboardStats(timeframe: 'week' | 'month' | 'year' | '
       timeframe,
       include_social: includeSocial.toString(),
     });
-    const wrappedRes = await http.get<ApiResponse<DashboardStats>>(`/api/v1/dashboard/stats?${params}`);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No stats data in response');
+    const wrappedRes = await http.get<ApiResponse<Unified.DashboardStats>>(`/api/v1/dashboard/stats?${params}`);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No stats data in response');
+
+    // Transform dashboard stats (using generic transformer)
+    const transformed = transformers.transformResponseKeys(rawData);
     apiLogger.info({}, 'Get dashboard stats success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/dashboard/stats' });
     throw err;
@@ -69,11 +70,14 @@ export async function getDashboardActivity(limit: number = 20, offset: number = 
       limit: limit.toString(),
       offset: offset.toString(),
     });
-    const wrappedRes = await http.get<ApiResponse<RecentActivity[]>>(`/api/v1/dashboard/activity?${params}`);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No activity data in response');
+    const wrappedRes = await http.get<ApiResponse<any[]>>(`/api/v1/dashboard/activity?${params}`);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No activity data in response');
+
+    // Transform activity data (using generic transformer)
+    const transformed = transformers.transformResponseKeys(rawData);
     apiLogger.info({}, 'Get dashboard activity success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/dashboard/activity' });
     throw err;

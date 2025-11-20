@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { getDashboard, getDashboardStats } from '@/features/dashboard/api/api';
 import { http } from '@/lib/http';
 import { Calendar, Activity, TrendingDown } from 'lucide-react';
+import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
 export default function ProgressPage() {
   const { t } = useTranslation();
@@ -22,10 +23,10 @@ export default function ProgressPage() {
       try {
         const [ov, st, weight, weekStats, monthStats] = await Promise.all([
           getDashboard().catch(() => null),
-          getDashboardStats({ period: 'month' }).catch(() => null),
+          getDashboardStats('month').catch(() => null),
           http.get<any>('/api/v1/personal/info').catch(() => null),
-          getDashboardStats({ period: 'week' }).catch(() => null),
-          getDashboardStats({ period: 'month' }).catch(() => null),
+          getDashboardStats('week').catch(() => null),
+          getDashboardStats('month').catch(() => null),
         ]);
         if (!mounted) return;
         setOverview(ov);
@@ -34,7 +35,6 @@ export default function ProgressPage() {
         setStatsWeek(weekStats);
         setStatsMonth(monthStats);
       } catch (err) {
-        console.error('Error loading progress:', err);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -56,7 +56,12 @@ export default function ProgressPage() {
   const currentWeight = weightDataResponse.weight_kg || null;
 
   if (loading) {
-    return <div className="flex items-center justify-center h-64"><div className="text-slate-400">{t('common.loading')}</div></div>;
+    return (
+      <div className="flex flex-col items-center justify-center h-screen gap-4">
+        <LoadingSpinner size="lg" variant="dumbbell" />
+        <p className="text-slate-400 text-sm">{t('common.loading')}</p>
+      </div>
+    );
   }
 
   return (

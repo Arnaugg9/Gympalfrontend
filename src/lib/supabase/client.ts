@@ -35,3 +35,26 @@ export async function getUser() {
 export async function signOut() {
   await supabase.auth.signOut();
 }
+
+/**
+ * Set auth tokens on the Supabase client (browser)
+ * This will set the session for the client so server requests via Supabase
+ * use the correct Authorization header for RLS-protected requests.
+ */
+export async function setAuthTokens(accessToken: string | null, refreshToken?: string | null) {
+  if (!accessToken) return;
+  try {
+    // supabase.auth.setSession accepts an object with access_token and refresh_token
+    // use a cast here to satisfy the TS signature in environments with differing lib types
+    await supabase.auth.setSession({ access_token: accessToken, refresh_token: (refreshToken ?? undefined) as any } as any);
+  } catch (err) {
+    // best-effort, don't throw in UI
+  }
+}
+
+export async function clearAuthTokens() {
+  try {
+    await supabase.auth.signOut();
+  } catch (err) {
+  }
+}

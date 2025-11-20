@@ -34,12 +34,12 @@ export default function UserProfilePage() {
         }
         
         if (postsRes) {
-          const allPosts = postsRes?.data?.posts || postsRes?.posts || postsRes?.data || (Array.isArray(postsRes) ? postsRes : []);
-          const userPosts = allPosts.filter((p: any) => p.userId === params.userId || p.author?.id === params.userId);
+          // postsRes structure: { data: [...posts], pagination: {...} }
+          const allPosts = postsRes?.data && Array.isArray(postsRes.data) ? postsRes.data : Array.isArray(postsRes) ? postsRes : [];
+          const userPosts = allPosts.filter((p: any) => p.userId === params.userId || p.user_id === params.userId || p.author?.id === params.userId);
           setPosts(userPosts);
         }
       } catch (err) {
-        console.error('Error loading user profile:', err);
       } finally {
         if (mounted) setLoading(false);
       }

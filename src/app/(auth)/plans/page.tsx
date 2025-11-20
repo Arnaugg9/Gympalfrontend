@@ -15,8 +15,6 @@ export default function PlansPage() {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    // TODO: Fetch plans from backend API when endpoint is available
-    // For now, show empty state
     setLoading(false);
   }, []);
 

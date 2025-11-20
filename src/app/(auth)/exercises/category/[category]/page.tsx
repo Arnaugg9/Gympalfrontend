@@ -1,4 +1,4 @@
-'use client';
+"use client";
 
 import { useParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -21,19 +21,16 @@ export default function ExercisesCategoryPage() {
       try {
         const list = await exercisesApi.list();
         if (!mounted) return;
-        const items = Array.isArray(list?.data) ? list.data 
-          : Array.isArray(list?.items) ? list.items 
-          : Array.isArray(list?.exercises) ? list.exercises
+        const items = Array.isArray(list?.data) ? list.data
           : Array.isArray(list) ? list : [];
         // Filter by category
-        const category = decodeURIComponent(params.category);
+        const category = decodeURIComponent(params.category || '');
         const filtered = items.filter((e: any) => {
           const cat = (e.category || e.muscle_group || 'general').toString().toLowerCase();
           return cat === category.toLowerCase();
         });
         setExercises(filtered);
       } catch (err) {
-        console.error('Error loading exercises:', err);
         if (!mounted) return;
         setExercises([]);
       } finally {

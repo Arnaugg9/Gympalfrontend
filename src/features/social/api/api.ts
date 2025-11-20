@@ -1,39 +1,12 @@
 import { http } from '@/lib/http';
 import { apiLogger, logError } from '@/lib/logger';
 import type { ApiResponse } from '@/features/auth/types';
-
-export type PostImage = {
-  url: string;
-  alt?: string;
-};
-
-export type Post = {
-  id: string;
-  user_id: string;
-  content: string;
-  image_urls?: PostImage[];
-  workout_id?: string;
-  hashtags?: string[];
-  is_public: boolean;
-  likes_count?: number;
-  comments_count?: number;
-  created_at: string;
-  updated_at: string;
-};
-
-export type Comment = {
-  id: string;
-  post_id: string;
-  user_id: string;
-  content: string;
-  parent_comment_id?: string;
-  created_at: string;
-  updated_at: string;
-};
+import type * as Unified from '@/lib/types/unified.types';
+import * as transformers from '@/lib/transformers';
 
 export type CreatePostRequest = {
   content: string;
-  images?: PostImage[];
+  images?: { url: string; alt?: string }[];
   workout_id?: string;
   tags?: string[];
   is_public?: boolean;
@@ -42,18 +15,6 @@ export type CreatePostRequest = {
 export type CreateCommentRequest = {
   content: string;
   parent_comment_id?: string;
-};
-
-export type PaginatedPosts = {
-  data: Post[];
-  pagination: {
-    page: number;
-    limit: number;
-    total: number;
-    totalPages: number;
-    hasNext: boolean;
-    hasPrev: boolean;
-  };
 };
 
 /**
@@ -66,11 +27,18 @@ export async function listPosts(page: number = 1, limit: number = 20) {
       page: page.toString(),
       limit: limit.toString(),
     });
-    const wrappedRes = await http.get<ApiResponse<PaginatedPosts>>(`/api/v1/social/posts?${params}`);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No posts in response');
+    const response = await http.get<any>(`/api/v1/social/posts?${params}`);
+
+    // Backend returns: { success: true, data: [...posts], pagination: {...}, metadata: {...} }
+
+    if (!response || !response.data) throw new Error('No posts in response');
+
+    // Return the data with posts array and pagination
     apiLogger.info({}, 'List posts success');
-    return data;
+    return {
+      data: response.data || [],
+      pagination: response.pagination || { page, limit, total: 0, totalPages: 0, hasNext: false, hasPrev: false }
+    };
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/social/posts' });
     throw err;
@@ -83,11 +51,14 @@ export async function listPosts(page: number = 1, limit: number = 20) {
 export async function createPost(request: CreatePostRequest) {
   apiLogger.info({ endpoint: '/api/v1/social/posts' }, 'Create post request');
   try {
-    const wrappedRes = await http.post<ApiResponse<Post>>('/api/v1/social/posts', request);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No post in response');
+    const wrappedRes = await http.post<ApiResponse<Unified.Post>>('/api/v1/social/posts', request);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No post in response');
+
+    // Transform post
+    const transformed = transformers.postTransformers.transformPost(rawData);
     apiLogger.info({}, 'Create post success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: '/api/v1/social/posts' });
     throw err;
@@ -100,11 +71,14 @@ export async function createPost(request: CreatePostRequest) {
 export async function getPost(postId: string) {
   apiLogger.info({ endpoint: `/api/v1/social/posts/${postId}` }, 'Get post request');
   try {
-    const wrappedRes = await http.get<ApiResponse<Post>>(`/api/v1/social/posts/${postId}`);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No post in response');
+    const wrappedRes = await http.get<ApiResponse<Unified.Post>>(`/api/v1/social/posts/${postId}`);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No post in response');
+
+    // Transform post
+    const transformed = transformers.postTransformers.transformPost(rawData);
     apiLogger.info({}, 'Get post success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: `/api/v1/social/posts/${postId}` });
     throw err;
@@ -117,11 +91,14 @@ export async function getPost(postId: string) {
 export async function updatePost(postId: string, request: Partial<CreatePostRequest>) {
   apiLogger.info({ endpoint: `/api/v1/social/posts/${postId}` }, 'Update post request');
   try {
-    const wrappedRes = await http.put<ApiResponse<Post>>(`/api/v1/social/posts/${postId}`, request);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No post in response');
+    const wrappedRes = await http.put<ApiResponse<Unified.Post>>(`/api/v1/social/posts/${postId}`, request);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No post in response');
+
+    // Transform post
+    const transformed = transformers.postTransformers.transformPost(rawData);
     apiLogger.info({}, 'Update post success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: `/api/v1/social/posts/${postId}` });
     throw err;
@@ -165,11 +142,14 @@ export async function togglePostLike(postId: string) {
 export async function listPostComments(postId: string) {
   apiLogger.info({ endpoint: `/api/v1/social/posts/${postId}/comments` }, 'List post comments request');
   try {
-    const wrappedRes = await http.get<ApiResponse<Comment[]>>(`/api/v1/social/posts/${postId}/comments`);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No comments in response');
+    const wrappedRes = await http.get<ApiResponse<Unified.PostComment[]>>(`/api/v1/social/posts/${postId}/comments`);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No comments in response');
+
+    // Transform comments
+    const transformed = transformers.postTransformers.transformComments(rawData);
     apiLogger.info({}, 'List post comments success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: `/api/v1/social/posts/${postId}/comments` });
     throw err;
@@ -182,11 +162,14 @@ export async function listPostComments(postId: string) {
 export async function createPostComment(postId: string, request: CreateCommentRequest) {
   apiLogger.info({ endpoint: `/api/v1/social/posts/${postId}/comments` }, 'Create post comment request');
   try {
-    const wrappedRes = await http.post<ApiResponse<Comment>>(`/api/v1/social/posts/${postId}/comments`, request);
-    const data = wrappedRes?.data;
-    if (!data) throw new Error('No comment in response');
+    const wrappedRes = await http.post<ApiResponse<Unified.PostComment>>(`/api/v1/social/posts/${postId}/comments`, request);
+    const rawData = wrappedRes?.data;
+    if (!rawData) throw new Error('No comment in response');
+
+    // Transform comment
+    const transformed = transformers.postTransformers.transformComment(rawData);
     apiLogger.info({}, 'Create post comment success');
-    return data;
+    return transformed;
   } catch (err) {
     logError(err as Error, { endpoint: `/api/v1/social/posts/${postId}/comments` });
     throw err;
@@ -236,6 +219,23 @@ export async function unfollowUser(userId: string) {
 }
 
 /**
+ * Toggle repost a post
+ */
+export async function togglePostRepost(postId: string) {
+  apiLogger.info({ endpoint: `/api/v1/social/posts/${postId}/repost` }, 'Toggle post repost request');
+  try {
+    const wrappedRes = await http.post<ApiResponse<{ reposted: boolean }>>(`/api/v1/social/posts/${postId}/repost`);
+    const data = wrappedRes?.data;
+    if (!data) throw new Error('No repost status in response');
+    apiLogger.info({}, 'Toggle post repost success');
+    return data;
+  } catch (err) {
+    logError(err as Error, { endpoint: `/api/v1/social/posts/${postId}/repost` });
+    throw err;
+  }
+}
+
+/**
  * Social API object for convenience
  */
 export const socialApi = {
@@ -245,6 +245,7 @@ export const socialApi = {
   updatePost: updatePost,
   deletePost: deletePost,
   like: togglePostLike,
+  repost: togglePostRepost,
   comments: listPostComments,
   createComment: createPostComment,
   deleteComment: deletePostComment,

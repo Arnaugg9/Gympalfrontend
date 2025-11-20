@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Plus, Heart, UserPlus, Image as ImageIcon, Search, Trash2 } from 'lucide-react';
+import { Users, Plus, Heart, UserPlus, Image as ImageIcon, Search, Trash2, Repeat2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -30,10 +30,15 @@ type Post = {
   content: string;
   likesCount?: number;
   commentsCount?: number;
+  reposts_count?: number;
   createdAt?: string;
+  image_urls?: string[];
+  image_urls_?: string[];
   author?: { id: string; username?: string; fullName?: string; email?: string; avatar?: string };
   isLiked?: boolean;
   userId?: string; // ID of the post owner
+  user_id?: string;
+  workout_id?: string;
 };
 
 type Comment = {
@@ -53,6 +58,7 @@ export default function SocialPage() {
   const [posts, setPosts] = useState<Post[]>([]);
   const [liked, setLiked] = useState<Record<string, boolean>>({});
   const [followed, setFollowed] = useState<Record<string, boolean>>({});
+  const [reposted, setReposted] = useState<Record<string, boolean>>({});
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
@@ -65,10 +71,11 @@ export default function SocialPage() {
   const [publishError, setPublishError] = useState('');
   const [replyingTo, setReplyingTo] = useState<{ postId: string; commentId: string } | null>(null);
   const [replyContent, setReplyContent] = useState('');
-  const [postImages, setPostImages] = useState<{ url: string; alt?: string }[]>([]);
+  const [postImages, setPostImages] = useState<{ url: string; alt?: string; file?: File }[]>([]);
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
   const [imageUrl, setImageUrl] = useState('');
   const [userWorkouts, setUserWorkouts] = useState<any[]>([]);
+  const [imageFiles, setImageFiles] = useState<File[]>([]);
 
   useEffect(() => {
     let mounted = true;
@@ -80,7 +87,6 @@ export default function SocialPage() {
           setCurrentUserId(user.id);
         }
       } catch (err) {
-        console.error('Error getting current user:', err);
       }
     })();
     return () => { mounted = false; };
@@ -96,10 +102,10 @@ export default function SocialPage() {
         const res = await http.get<any>('/api/v1/workouts');
         const workouts = res?.data?.workouts || res?.workouts || res?.data || (Array.isArray(res) ? res : []);
         if (mounted) {
-          setUserWorkouts(workouts);
+          // Ensure we always store an array (API may return an object or wrapped data)
+          setUserWorkouts(Array.isArray(workouts) ? workouts : []);
         }
       } catch (err) {
-        console.error('Error loading workouts:', err);
       }
     })();
     return () => { mounted = false; };
@@ -110,7 +116,8 @@ export default function SocialPage() {
     (async () => {
       try {
         const res = await socialApi.posts();
-        const items = res?.data?.posts || res?.posts || res?.data || (Array.isArray(res) ? res : []);
+        // res structure: { data: [...posts], pagination: {...} }
+        const items: Post[] = res?.data && Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
         if (mounted) {
           setPosts(items);
           // Initialize liked and followed states
@@ -126,7 +133,6 @@ export default function SocialPage() {
           setFollowed(followedState);
         }
       } catch (err) {
-        console.error('Error loading posts:', err);
       }
     })();
     return () => { mounted = false; };
@@ -147,16 +153,42 @@ export default function SocialPage() {
     setLoading(true);
     setPublishError('');
     try {
-      const res = await socialApi.createPost({
-        content: postContent,
-        images: postImages.length > 0 ? postImages : undefined,
-        workout_id: selectedWorkoutId || undefined,
-        is_public: true,
-      });
-      const newPost = res?.data?.post || res?.data || res;
-      setPosts((prev) => [newPost, ...prev]);
+      // Check if we have file uploads
+      const hasFileUploads = imageFiles.length > 0;
+
+      if (hasFileUploads) {
+        // Use FormData for file uploads
+        const formData = new FormData();
+        formData.append('content', postContent);
+        formData.append('is_public', 'true');
+        if (selectedWorkoutId) {
+          formData.append('workout_id', selectedWorkoutId);
+        }
+
+        // Add all image files
+        imageFiles.forEach((file) => {
+          formData.append('images', file);
+        });
+
+        // Call API with FormData (don't set Content-Type header - browser will set it with correct boundary)
+        const res = await http.post<Post>('/api/v1/social/posts', formData);
+        const newPost = (res as any)?.data || res;
+        setPosts((prev) => [newPost, ...prev]);
+      } else {
+        // Use regular JSON for URL-only images
+        const res = await socialApi.createPost({
+          content: postContent,
+          images: postImages.length > 0 ? postImages.map(img => ({ url: img.url, alt: img.alt })) : undefined,
+          workout_id: selectedWorkoutId || undefined,
+          is_public: true,
+        });
+        const newPost = res as Post;
+        setPosts((prev) => [newPost, ...prev]);
+      }
+
       setPostContent('');
       setPostImages([]);
+      setImageFiles([]);
       setSelectedWorkoutId(null);
       setImageUrl('');
       setPublishModalOpen(false);
@@ -174,6 +206,30 @@ export default function SocialPage() {
     setImageUrl('');
   };
 
+  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    const newFiles = files.filter((file) => file.type.startsWith('image/'));
+
+    if (newFiles.length !== files.length) {
+      setErrorDialog({ open: true, message: 'Only image files are allowed' });
+    }
+
+    newFiles.forEach((file) => {
+      const reader = new FileReader();
+      reader.onload = (event) => {
+        const url = event.target?.result as string;
+        setPostImages((prev) => [...prev, { url, alt: file.name, file }]);
+        setImageFiles((prev) => [...prev, file]);
+      };
+      reader.readAsDataURL(file);
+    });
+
+    // Reset input
+    if (e.target) {
+      e.target.value = '';
+    }
+  };
+
   const handleRemoveImage = (index: number) => {
     setPostImages(postImages.filter((_, i) => i !== index));
   };
@@ -185,16 +241,32 @@ export default function SocialPage() {
       // Refetch the post to get updated like count
       try {
         const res = await socialApi.posts();
-        const items = res?.data?.posts || res?.posts || res?.data || (Array.isArray(res) ? res : []);
+        const items: Post[] = res?.data && Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
         const updatedPost = items.find((p: Post) => p.id === postId);
         if (updatedPost) {
           setPosts((prev) => prev.map((p) => p.id === postId ? updatedPost : p));
         }
       } catch (err) {
-        console.error('Error refetching post:', err);
       }
     } catch (err) {
-      console.error('Error liking post:', err);
+    }
+  };
+
+  const handleRepost = async (postId: string) => {
+    try {
+      await socialApi.repost(postId);
+      setReposted((prev) => ({ ...prev, [postId]: !prev[postId] }));
+      // Refetch the post to get updated repost count
+      try {
+        const res = await socialApi.posts();
+        const items: Post[] = res?.data && Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
+        const updatedPost = items.find((p: Post) => p.id === postId);
+        if (updatedPost) {
+          setPosts((prev) => prev.map((p) => p.id === postId ? updatedPost : p));
+        }
+      } catch (err) {
+      }
+    } catch (err) {
     }
   };
 
@@ -235,9 +307,10 @@ export default function SocialPage() {
       setShowComments((prev) => ({ ...prev, [postId]: !prev[postId] }));
       return;
     }
+    setLoading(true);
     try {
       const res = await socialApi.comments(postId);
-      const items = res?.data?.comments || res?.comments || res?.data || (Array.isArray(res) ? res : []);
+      const items = Array.isArray(res) ? res : [];
       // Map user_id to userId for consistent field naming
       const mappedComments = items.map((comment: any) => ({
         ...comment,
@@ -248,7 +321,8 @@ export default function SocialPage() {
       setComments((prev) => ({ ...prev, [postId]: mappedComments }));
       setShowComments((prev) => ({ ...prev, [postId]: true }));
     } catch (err) {
-      console.error('Error loading comments:', err);
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -271,13 +345,14 @@ export default function SocialPage() {
   const handlePostComment = async (postId: string) => {
     const content = commentContent[postId];
     if (!content?.trim()) return;
+    setLoading(true);
     try {
       const newComment = await socialApi.createComment(postId, { content });
       // Map user_id to userId for consistent field naming
       const mappedComment = {
-        ...newComment,
-        userId: newComment.userId || newComment.user_id,
-        createdAt: newComment.createdAt || newComment.created_at,
+        ...(newComment as any),
+        userId: (newComment as any).userId || newComment.user_id,
+        createdAt: (newComment as any).createdAt || newComment.created_at,
       };
       setComments((prev) => ({
         ...prev,
@@ -287,19 +362,21 @@ export default function SocialPage() {
       // Refetch posts to update comment count
       try {
         const res = await socialApi.posts();
-        const items = res?.data?.posts || res?.posts || res?.data || (Array.isArray(res) ? res : []);
+        const items: Post[] = res?.data && Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
         setPosts(items);
       } catch (err) {
-        console.error('Error refetching posts:', err);
       }
     } catch (err: any) {
       const msg = err?.message || 'Error posting comment';
       setErrorDialog({ open: true, message: typeof msg === 'string' ? msg : 'Error posting comment' });
+    } finally {
+      setLoading(false);
     }
   };
 
   const handlePostReply = async (postId: string, parentCommentId: string) => {
     if (!replyContent?.trim()) return;
+    setLoading(true);
     try {
       const newReply = await socialApi.createComment(postId, {
         content: replyContent,
@@ -308,9 +385,9 @@ export default function SocialPage() {
 
       // Map user_id to userId for consistent field naming
       const mappedReply = {
-        ...newReply,
-        userId: newReply.userId || newReply.user_id,
-        createdAt: newReply.createdAt || newReply.created_at,
+        ...(newReply as any),
+        userId: (newReply as any).userId || newReply.user_id,
+        createdAt: (newReply as any).createdAt || newReply.created_at,
       };
 
       // Update the comments to add the reply to the parent comment
@@ -333,14 +410,15 @@ export default function SocialPage() {
       // Refetch posts to update comment count
       try {
         const res = await socialApi.posts();
-        const items = res?.data?.posts || res?.posts || res?.data || (Array.isArray(res) ? res : []);
+        const items: Post[] = res?.data && Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
         setPosts(items);
       } catch (err) {
-        console.error('Error refetching posts:', err);
       }
     } catch (err: any) {
       const msg = err?.message || 'Error posting reply';
       setErrorDialog({ open: true, message: typeof msg === 'string' ? msg : 'Error posting reply' });
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -351,7 +429,7 @@ export default function SocialPage() {
     }
     setLoading(true);
     try {
-      const res = await http.post(`/api/v1/workouts/copy/${workoutId}`);
+      const res = await http.post<any>(`/api/v1/workouts/copy/${workoutId}`);
       const copiedWorkout = res?.data?.data || res?.data || res;
 
       setErrorDialog({
@@ -373,7 +451,14 @@ export default function SocialPage() {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 relative">
+      {/* Loading Overlay */}
+      {loading && (
+        <div className="fixed inset-0 bg-black/20 flex items-center justify-center z-50 pointer-events-none">
+          <LoadingSpinner size="lg" variant="dumbbell" />
+        </div>
+      )}
+
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-slate-900 dark:text-white mb-2">Social Feed</h1>
@@ -499,6 +584,15 @@ export default function SocialPage() {
                   onClick={() => handleLoadComments(post.id)}
                 >
                   {post.commentsCount ?? 0} comments
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => handleRepost(post.id)}
+                  className={reposted[post.id] ? 'text-emerald-500' : 'text-slate-600 dark:text-slate-400 hover:text-emerald-500'}
+                >
+                  <Repeat2 className={`h-4 w-4 mr-2 ${reposted[post.id] ? 'fill-emerald-500' : ''}`} />
+                  {(post.reposts_count || 0) + (reposted[post.id] ? 1 : 0)}
                 </Button>
               </div>
               {/* Comments Section */}
@@ -693,25 +787,44 @@ export default function SocialPage() {
               </div>
             )}
 
-            {/* Image URLs Input */}
+            {/* Image Upload Input */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-900 dark:text-white">Add Images (URLs)</label>
-              <div className="flex gap-2">
-                <Input
-                  placeholder="Paste image URL..."
-                  value={imageUrl}
-                  onChange={(e) => setImageUrl(e.target.value)}
-                  className="bg-white dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
-                />
-                <Button
-                  onClick={handleAddImage}
-                  disabled={!imageUrl.trim()}
-                  size="sm"
-                  variant="outline"
-                  className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
-                >
-                  <ImageIcon className="h-4 w-4" />
-                </Button>
+              <label className="text-sm font-medium text-slate-900 dark:text-white">Add Images</label>
+              <div className="space-y-2">
+                {/* File Upload */}
+                <div className="flex gap-2">
+                  <label className="flex-1 px-3 py-2 bg-white dark:bg-slate-900/50 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded cursor-pointer hover:border-emerald-400 dark:hover:border-emerald-400 transition-colors">
+                    <input
+                      type="file"
+                      multiple
+                      accept="image/*"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                    />
+                    <span className="text-sm text-slate-600 dark:text-slate-400">
+                      Click to upload images from your computer
+                    </span>
+                  </label>
+                </div>
+
+                {/* URL Input (Alternative) */}
+                <div className="flex gap-2">
+                  <Input
+                    placeholder="Or paste image URL..."
+                    value={imageUrl}
+                    onChange={(e) => setImageUrl(e.target.value)}
+                    className="bg-white dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+                  />
+                  <Button
+                    onClick={handleAddImage}
+                    disabled={!imageUrl.trim()}
+                    size="sm"
+                    variant="outline"
+                    className="border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-300"
+                  >
+                    <ImageIcon className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
 
               {/* Display added images */}
@@ -743,14 +856,15 @@ export default function SocialPage() {
 
             {/* Workout Reference */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-900 dark:text-white">Reference Workout (optional)</label>
+              <label htmlFor="workout-select" className="text-sm font-medium text-slate-900 dark:text-white">Reference Workout (optional)</label>
               <select
+                id="workout-select"
                 value={selectedWorkoutId || ''}
                 onChange={(e) => setSelectedWorkoutId(e.target.value || null)}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
                 <option value="">-- No workout --</option>
-                {userWorkouts.map((workout: any) => (
+                {(Array.isArray(userWorkouts) ? userWorkouts : []).map((workout: any) => (
                   <option key={workout.id} value={workout.id}>
                     {workout.name} ({workout.difficulty || 'N/A'})
                   </option>

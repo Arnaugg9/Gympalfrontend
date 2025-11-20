@@ -76,7 +76,6 @@ export default function SettingsPage() {
           setShowStats(privacy.showStats);
         }
       } catch (err) {
-        console.error('Error loading settings:', err);
       } finally {
         if (mounted) setLoading(false);
       }

@@ -4,26 +4,20 @@ import { useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
 import { getDashboard, getDashboardStats, QuickActionCard } from '@/features/dashboard';
-import { me } from '@/features/auth';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Dumbbell, Users, Calendar as CalIcon, TrendingUp, MessageSquare, Target, Flame, Activity } from 'lucide-react';
 import { Progress } from '@/components/ui/progress';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { useAuthStore } from '@/lib/store/auth.store';
 
 export default function DashboardPage() {
   const { t } = useTranslation();
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string>('');
   const [overview, setOverview] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
-  const [userName, setUserName] = useState<string>(() => {
-    // Initialize from localStorage if available
-    if (typeof window !== 'undefined') {
-      return localStorage.getItem('user_name') || 'User';
-    }
-    return 'User';
-  });
 
   useEffect(() => {
     let mounted = true;
@@ -32,11 +26,9 @@ export default function DashboardPage() {
         // Load dashboard data
         const [ov, st] = await Promise.all([
           getDashboard().catch(err => {
-            console.error('Error getting dashboard:', err);
             return null;
           }),
           getDashboardStats().catch(err => {
-            console.error('Error getting dashboard stats:', err);
             return null;
           })
         ]);
@@ -44,33 +36,12 @@ export default function DashboardPage() {
         if (!mounted) return;
         setOverview(ov);
         setStats(st);
-
-        // Load user data separately with better error handling
-        try {
-          const userRes = await me();
-          console.log('User response:', userRes);
-
-          if (userRes) {
-            // Try different possible field names for the full name
-            const fullName = userRes.fullName || userRes.full_name || userRes.username || userRes.email || 'User';
-            console.log('Full name extracted:', fullName);
-            const nameParts = fullName.split(' ');
-            const firstName = nameParts[0] || fullName;
-            console.log('First name:', firstName);
-            setUserName(firstName);
-          } else {
-            console.warn('No user data returned from me()');
-          }
-        } catch (userErr) {
-          console.error('Error getting user info:', userErr);
-          // Still allow dashboard to load even if user data fails
-        }
       } finally {
         if (mounted) setLoading(false);
       }
     })();
     return () => { mounted = false; };
-  }, [t]);
+  }, []);
 
   const overviewData = overview?.data || {};
   const statsData = stats?.data || {};
@@ -109,7 +80,7 @@ export default function DashboardPage() {
 
         <div className="relative z-10">
           <h1 className="text-4xl font-bold mb-2">
-            {t('dashboard.greeting', { name: userName })}
+            {t('dashboard.greeting', { name: user?.username || user?.email?.split('@')[0] || 'User' })}
           </h1>
           <p className="text-emerald-50">{t('dashboard.summary')}</p>
         </div>

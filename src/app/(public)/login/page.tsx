@@ -32,7 +32,6 @@ export default function LoginPage() {
         }
       } catch (err) {
         // If token check fails, stay on login page
-        console.debug('Token check failed, staying on login page');
       }
     };
 

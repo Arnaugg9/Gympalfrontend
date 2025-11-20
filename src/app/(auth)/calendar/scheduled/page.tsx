@@ -19,7 +19,7 @@ export default function ScheduledWorkoutsPage() {
     const month = String(now.getMonth() + 1).padStart(2, '0');
     (async () => {
       try {
-        const res = await http.get<any>(`/api/v1/dashboard/calendar?month=${month}&year=${year}`);
+        const res = await http.get<any>(`/api/v1/calendar?month=${month}&year=${year}`);
         if (!mounted) return;
         const days = Array.isArray(res?.days) ? res.days : [];
         const upcoming = days

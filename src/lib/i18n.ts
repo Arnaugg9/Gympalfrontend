@@ -96,6 +96,10 @@ const resources = {
         showMore: 'Show More',
         confirmDelete: 'Delete Routine',
         confirmDeleteDescription: 'Are you sure you want to delete this routine? This action cannot be undone.',
+        selectWorkout: 'Select Workout',
+        selectWorkoutDescription: 'Choose one or more workouts to add to today',
+        createNewDescription: 'Design a custom workout for today',
+        selectAtLeastOne: 'Please select at least one workout',
       },
       progress: {
         title: 'Statistics and Metrics',
@@ -392,6 +396,10 @@ const resources = {
         showMore: 'Ver Más',
         confirmDelete: 'Eliminar Rutina',
         confirmDeleteDescription: '¿Estás seguro de que quieres eliminar esta rutina? Esta acción no se puede deshacer.',
+        selectWorkout: 'Seleccionar Rutina',
+        selectWorkoutDescription: 'Elige uno o más entrenamientos para añadir a hoy',
+        createNewDescription: 'Diseña un entrenamiento personalizado para hoy',
+        selectAtLeastOne: 'Por favor selecciona al menos un entrenamiento',
       },
       progress: {
         title: 'Estadísticas y Métrica',
@@ -676,6 +684,10 @@ const resources = {
         showMore: 'Mostrar Més',
         confirmDelete: 'Eliminar Rutina',
         confirmDeleteDescription: 'Estàs segur que vols eliminar aquesta rutina? Aquesta acció no es pot desfer.',
+        selectWorkout: 'Seleccionar Rutina',
+        selectWorkoutDescription: 'Tria un o més entrenaments per afegir avui',
+        createNewDescription: 'Dissenya un entrenament personalitzat per avui',
+        selectAtLeastOne: 'Si us plau selecciona almenys un entrenament',
       },
       progress: {
         title: 'Estadístiques i Mètriques',
@@ -954,6 +966,10 @@ const resources = {
         showMore: 'Afficher Plus',
         confirmDelete: 'Supprimer la Séance',
         confirmDeleteDescription: 'Êtes-vous sûr de vouloir supprimer cette séance ? Cette action ne peut pas être annulée.',
+        selectWorkout: 'Sélectionner une Séance',
+        selectWorkoutDescription: 'Choisissez un ou plusieurs entraînements à ajouter à aujourd\'hui',
+        createNewDescription: 'Concevez un entraînement personnalisé pour aujourd\'hui',
+        selectAtLeastOne: 'Veuillez sélectionner au moins un entraînement',
       },
       progress: {
         title: 'Statistiques et Métriques',

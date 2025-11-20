@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Search, Check } from 'lucide-react';
+import { ArrowLeft, Search, Check, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -21,17 +21,22 @@ export default function ExercisesPage() {
     (async () => {
       try {
         setLoading(true);
-        const list = await exercisesApi.list();
+        const response = await exercisesApi.list();
         if (!mounted) return;
+
         // Handle different response formats from backend
-        const items = Array.isArray(list?.data) ? list.data
-          : Array.isArray(list?.items) ? list.items
-          : Array.isArray(list?.exercises) ? list.exercises
-          : Array.isArray(list) ? list : [];
-        console.log('Loaded exercises:', items);
+        let items: any[] = [];
+        const responseAny = response as any;
+        if (responseAny?.data && Array.isArray(responseAny.data)) {
+          items = responseAny.data;
+        } else if (responseAny?.exercises && Array.isArray(responseAny.exercises)) {
+          items = responseAny.exercises;
+        } else if (Array.isArray(responseAny)) {
+          items = responseAny;
+        }
+
         setExercises(items);
       } catch (err) {
-        console.error('Error loading exercises:', err);
         if (!mounted) return;
         setExercises([]);
       } finally {
@@ -41,29 +46,57 @@ export default function ExercisesPage() {
     return () => { mounted = false; };
   }, []);
 
-  const byCategory = useMemo(() => {
+  // Group exercises by difficulty level - keep full exercise data
+  const byDifficulty = useMemo(() => {
     const map: Record<string, any[]> = {};
+    const difficultyOrder = ['beginner', 'intermediate', 'advanced', 'expert'];
+
     for (const e of exercises) {
-      const cat = (e.category || e.muscle_group || 'general').toString().toLowerCase();
-      if (!map[cat]) map[cat] = [];
-      map[cat].push({ id: String(e.id || e.uuid || e._id), name: e.name, difficulty: e.difficulty || '' });
+      const difficulty = (e.difficulty || 'intermediate').toString().toLowerCase();
+      if (!map[difficulty]) map[difficulty] = [];
+      // Store full exercise object, not just { id, name, difficulty }
+      map[difficulty].push(e);
     }
-    return map;
+
+    // Sort by difficulty order
+    const ordered: Record<string, any[]> = {};
+    for (const level of difficultyOrder) {
+      if (map[level]) {
+        ordered[level] = map[level];
+      }
+    }
+    // Add any other difficulties
+    for (const key in map) {
+      if (!ordered[key]) {
+        ordered[key] = map[key] || [];
+      }
+    }
+    return ordered;
   }, [exercises]);
 
-  const categories = Object.keys(byCategory).length ? Object.keys(byCategory) : ['general'];
+  const difficulties = Object.keys(byDifficulty).length ? Object.keys(byDifficulty) : [];
 
   const toggleExercise = (id: string) => {
     setSelectedExercises((prev) => (prev.includes(id) ? prev.filter((e) => e !== id) : [...prev, id]));
   };
 
   const handleSave = () => {
-    // Save selected exercises to sessionStorage so they persist across navigation
+    // Save selected exercises to localStorage so they persist across navigation
     if (selectedExercises.length > 0) {
-      const selectedExerciseData = exercises.filter(ex =>
-        selectedExercises.includes(String(ex.id || ex.uuid || ex._id))
-      );
-      sessionStorage.setItem('selectedWorkoutExercises', JSON.stringify(selectedExerciseData));
+      // Create array of selected exercise data by matching IDs from full exercises array
+      const selectedExerciseData: any[] = [];
+
+      selectedExercises.forEach((selectedId) => {
+        const exercise = exercises.find(ex => {
+          const exId = String(ex.id || ex.uuid || ex._id);
+          return exId === selectedId;
+        });
+        if (exercise) {
+          selectedExerciseData.push(exercise);
+        }
+      });
+
+      localStorage.setItem('workoutFormExercises', JSON.stringify(selectedExerciseData));
     }
     router.back();
   };
@@ -126,48 +159,66 @@ export default function ExercisesPage() {
         </div>
       )}
 
-      {/* Exercise Categories */}
-      {!loading && exercises.length > 0 && (
-        <Tabs defaultValue={categories[0]} className="space-y-4">
+      {/* Exercise Difficulties */}
+      {!loading && exercises.length > 0 && difficulties.length > 0 && (
+        <Tabs defaultValue={difficulties[0]} className="space-y-4">
           <TabsList className="bg-slate-800/50 border border-slate-700">
-            {categories.map((c) => (
-              <TabsTrigger key={c} value={c}>{c.charAt(0).toUpperCase() + c.slice(1)}</TabsTrigger>
+            {difficulties.map((d) => (
+              <TabsTrigger key={d} value={d}>{d.charAt(0).toUpperCase() + d.slice(1)}</TabsTrigger>
             ))}
           </TabsList>
 
-          {categories.map((category) => (
-            <TabsContent key={category} value={category} className="space-y-3">
-              {(byCategory[category] || []).filter((e) => passesSearch(e.name)).map((exercise: any) => {
-                const isSelected = selectedExercises.includes(exercise.id);
+          {difficulties.map((difficulty) => (
+            <TabsContent key={difficulty} value={difficulty} className="space-y-3">
+              {(byDifficulty[difficulty] || []).filter((e) => passesSearch(e.name)).map((exercise: any) => {
+                const exerciseId = String(exercise.id || exercise.uuid || exercise._id);
+                const isSelected = selectedExercises.includes(exerciseId);
+                const videoUrl = exercise?.videoUrl || exercise?.video_url;
                 return (
                   <Card
-                    key={exercise.id}
+                    key={exerciseId}
                     className={`cursor-pointer transition-all ${
                       isSelected
                         ? 'bg-emerald-500/20 border-emerald-500'
                         : 'bg-slate-800/50 border-slate-700 hover:border-slate-600'
                     }`}
-                    onClick={() => toggleExercise(exercise.id)}
+                    onClick={() => toggleExercise(exerciseId)}
                   >
                     <CardContent className="p-4">
                       <div className="flex items-center justify-between">
-                        <div>
+                        <div className="flex-1">
                           <h3 className="text-white mb-1">{exercise.name}</h3>
                           <p className="text-slate-400 text-sm">{exercise.difficulty}</p>
                         </div>
-                        <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
-                          isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-slate-600'
-                        }`}>
-                          {isSelected && <Check className="h-4 w-4 text-white" />}
+                        <div className="flex items-center gap-2">
+                          {videoUrl && (
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              className="text-slate-400 hover:text-red-500 hover:bg-red-500/10"
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                window.open(videoUrl, '_blank');
+                              }}
+                              title="Watch YouTube video"
+                            >
+                              <Play className="h-4 w-4" />
+                            </Button>
+                          )}
+                          <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
+                            isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-slate-600'
+                          }`}>
+                            {isSelected && <Check className="h-4 w-4 text-white" />}
+                          </div>
                         </div>
                       </div>
                     </CardContent>
                   </Card>
                 );
               })}
-              {(byCategory[category] || []).filter((e) => passesSearch(e.name)).length === 0 && (
+              {(byDifficulty[difficulty] || []).filter((e) => passesSearch(e.name)).length === 0 && (
                 <div className="text-slate-500 text-center py-8">
-                  No exercises in this category
+                  No exercises in this difficulty level
                 </div>
               )}
             </TabsContent>

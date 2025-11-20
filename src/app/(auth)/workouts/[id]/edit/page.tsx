@@ -43,14 +43,11 @@ export default function EditWorkoutPage() {
         }
         
         if (exercisesData) {
-          const items = Array.isArray(exercisesData?.data) ? exercisesData.data 
-            : Array.isArray(exercisesData?.items) ? exercisesData.items 
-            : Array.isArray(exercisesData?.exercises) ? exercisesData.exercises
+          const items = Array.isArray(exercisesData?.data) ? exercisesData.data
             : Array.isArray(exercisesData) ? exercisesData : [];
           setExercises(items);
         }
       } catch (err) {
-        console.error('Error loading workout:', err);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -65,11 +62,10 @@ export default function EditWorkoutPage() {
       await workoutsApi.update(params.id, {
         name: name.trim(),
         description: description.trim(),
-        exercises: selectedExercises,
+        exercises: selectedExercises as any,
       });
       router.push(`/workouts/${params.id}`);
     } catch (err) {
-      console.error('Error updating workout:', err);
       alert(t('errors.saveError'));
     } finally {
       setSaving(false);

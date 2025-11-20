@@ -5,63 +5,66 @@
 
 export const API_ENDPOINTS = {
   // Authentication
-  AUTH: {
-    LOGIN: '/api/v1/auth/login',
-    REGISTER: '/api/v1/auth/register',
-    LOGOUT: '/api/v1/auth/logout',
-    REFRESH: '/api/v1/auth/refresh',
-    ME: '/api/v1/auth/me',
-    VERIFY_EMAIL: '/api/v1/auth/verify-email',
-    FORGOT_PASSWORD: '/api/v1/auth/forgot-password',
-    RESET_PASSWORD: '/api/v1/auth/reset-password',
-    CHANGE_PASSWORD: '/api/v1/auth/change-password',
+  auth: {
+    login: '/api/v1/auth/login',
+    register: '/api/v1/auth/register',
+    logout: '/api/v1/auth/logout',
+    refresh: '/api/v1/auth/refresh',
+    me: '/api/v1/auth/me',
+    verifyEmail: '/api/v1/auth/verify-email',
+    forgotPassword: '/api/v1/auth/forgot-password',
+    resetPassword: '/api/v1/auth/reset-password',
+    changePassword: '/api/v1/auth/change-password',
   },
 
   // Users
-  USERS: {
-    GET_PROFILE: '/api/v1/users/profile',
-    UPDATE_PROFILE: '/api/v1/users/profile',
-    GET_BY_ID: (id: string) => `/api/v1/users/${id}`,
-    SEARCH: '/api/v1/users/search',
+  users: {
+    getProfile: '/api/v1/users/profile',
+    updateProfile: '/api/v1/users/profile',
+    getById: (id: string) => `/api/v1/users/${id}`,
+    search: '/api/v1/users/search',
   },
 
   // Workouts
-  WORKOUTS: {
-    LIST: '/api/v1/workouts',
-    CREATE: '/api/v1/workouts',
-    GET_BY_ID: (id: string) => `/api/v1/workouts/${id}`,
-    UPDATE: (id: string) => `/api/v1/workouts/${id}`,
-    DELETE: (id: string) => `/api/v1/workouts/${id}`,
+  workouts: {
+    list: '/api/v1/workouts',
+    create: '/api/v1/workouts',
+    getById: (id: string) => `/api/v1/workouts/${id}`,
+    update: (id: string) => `/api/v1/workouts/${id}`,
+    delete: (id: string) => `/api/v1/workouts/${id}`,
   },
 
   // Exercises
-  EXERCISES: {
-    LIST: '/api/v1/exercises',
-    GET_BY_ID: (id: string) => `/api/v1/exercises/${id}`,
-    GET_BY_CATEGORY: (category: string) => `/api/v1/exercises/category/${category}`,
+  exercises: {
+    list: '/api/v1/exercises',
+    getById: (id: string) => `/api/v1/exercises/${id}`,
+    getByCategory: (category: string) => `/api/v1/exercises/category/${category}`,
   },
 
   // Progress
-  PROGRESS: {
-    LIST: '/api/v1/progress',
-    CREATE: '/api/v1/progress',
-    GET_BY_ID: (id: string) => `/api/v1/progress/${id}`,
-    UPDATE: (id: string) => `/api/v1/progress/${id}`,
+  progress: {
+    list: '/api/v1/progress',
+    create: '/api/v1/progress',
+    getById: (id: string) => `/api/v1/progress/${id}`,
+    update: (id: string) => `/api/v1/progress/${id}`,
   },
 
   // Diet
-  DIET: {
-    LIST: '/api/v1/diet',
-    CREATE: '/api/v1/diet',
-    GET_BY_ID: (id: string) => `/api/v1/diet/${id}`,
-    UPDATE: (id: string) => `/api/v1/diet/${id}`,
+  diet: {
+    list: '/api/v1/diet',
+    create: '/api/v1/diet',
+    getById: (id: string) => `/api/v1/diet/${id}`,
+    update: (id: string) => `/api/v1/diet/${id}`,
   },
 
   // Social
-  SOCIAL: {
-    USERS: '/api/v1/social/users',
-    GET_USER: (userId: string) => `/api/v1/social/users/${userId}`,
-    FOLLOW: '/api/v1/social/follow',
-    UNFOLLOW: '/api/v1/social/unfollow',
+  social: {
+    users: '/api/v1/social/users',
+    getUser: (userId: string) => `/api/v1/social/users/${userId}`,
+    follow: '/api/v1/social/follow',
+    unfollow: '/api/v1/social/unfollow',
   },
 };
+
+// Export lowercase version for backward compatibility
+export const endpoints = API_ENDPOINTS;

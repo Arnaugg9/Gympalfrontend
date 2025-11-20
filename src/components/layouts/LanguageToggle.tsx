@@ -31,13 +31,11 @@ export default function LanguageToggle() {
       try {
         await settingsApi.updateSettings({ language: langCode });
       } catch (err) {
-        console.error('Error updating language in backend:', err);
         // Still change the language locally even if backend update fails
       }
 
       setIsOpen(false);
     } catch (err) {
-      console.error('Error changing language:', err);
     }
   };
 

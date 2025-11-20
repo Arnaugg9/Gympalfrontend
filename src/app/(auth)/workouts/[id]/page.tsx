@@ -7,6 +7,7 @@ import { ArrowLeft, Play, Edit, Trash2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { useEffect, useState } from 'react';
 import { workoutsApi } from '@/features/workouts/api/api';
+import { exercisesApi } from '@/features/exercises/api/api';
 
 export default function WorkoutDetailPage() {
   const router = useRouter();
@@ -19,6 +20,32 @@ export default function WorkoutDetailPage() {
       try {
         const data = await workoutsApi.get(params.id);
         if (!mounted) return;
+        // If workout exercises were returned only as ids or without nested exercise objects,
+        // fetch exercise details for each missing exercise to display names/details.
+        const exercises = data?.exercises || [];
+        const needFetch = exercises.filter((e: any) => !e.exercise || !e.exercise.name).map((e: any) => e.exerciseId || e.exerciseId || e.exercise_id || e.exercise?.id || e.id);
+
+        if (needFetch.length > 0) {
+          try {
+            const uniqueIds = Array.from(new Set(needFetch.filter(Boolean)));
+            const fetched = await Promise.all(uniqueIds.map((id) => exercisesApi.get(String(id)).catch(() => null)));
+            const fetchedById: Record<string, any> = {};
+            fetched.forEach((f) => { if (f?.id) fetchedById[f.id] = f; });
+            // Merge fetched exercise objects back into workout exercises
+            data.exercises = exercises.map((ex: any) => {
+              const exId = ex.exerciseId || ex.exercise_id || ex.exercise?.id || ex.id;
+              const full = fetchedById[exId] || ex.exercise || null;
+              return {
+                ...ex,
+                exercise: full ?? ex.exercise,
+                id: ex.id ?? exId,
+              };
+            });
+          } catch (err) {
+            // ignore fetch errors and continue with whatever data we have
+          }
+        }
+
         setWorkout(data);
       } catch {
         if (!mounted) return;

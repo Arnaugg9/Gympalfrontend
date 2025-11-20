@@ -13,7 +13,9 @@ export type Exercise = {
   duration?: number;
   restTime?: number;
   imageUrl?: string;
+  image_url?: string;
   videoUrl?: string;
+  video_url?: string;
   instructions?: string[];
   createdAt?: string;
   updatedAt?: string;

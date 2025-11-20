@@ -2,7 +2,10 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { workoutsApi } from '../api/api';
 
 export function useWorkouts(params?: { page?: number; limit?: number }) {
-  return useQuery({ queryKey: ['workouts', params], queryFn: () => workoutsApi.list(params) });
+  return useQuery({
+    queryKey: ['workouts', params],
+    queryFn: () => workoutsApi.list(params?.page || 1, params?.limit || 10),
+  });
 }
 
 export function useWorkout(id: string) {
