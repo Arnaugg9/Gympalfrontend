@@ -50,6 +50,15 @@ type Post = {
     difficulty?: string;
     duration_minutes?: number;
   };
+  // Repost fields
+  isRepost?: boolean;
+  repostedBy?: {
+    id: string;
+    username?: string;
+    fullName?: string;
+  };
+  repostedAt?: string;
+  originalPost?: Post;
 };
 
 type Comment = {
@@ -137,26 +146,98 @@ export default function SocialPage() {
     let mounted = true;
     (async () => {
       try {
-        const res = await socialApi.posts();
+        // Fetch posts and user reposts in parallel
+        const [postsRes, repostsRes] = await Promise.all([
+          socialApi.posts(),
+          currentUserId ? socialApi.getUserReposts(currentUserId).catch(() => ({ data: [] })) : Promise.resolve({ data: [] })
+        ]);
+
         // res structure: { data: [...posts], pagination: {...} }
-        const items: Post[] = res?.data && Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
+        const items: Post[] = postsRes?.data && Array.isArray(postsRes.data) ? postsRes.data : Array.isArray(postsRes) ? postsRes : [];
+        
+        // Process reposts
+        const reposts: Post[] = (repostsRes?.data || []).map((repost: any) => {
+          // The repost object from backend has: id, original_post_id, reposted_at, posts (the original post)
+          // We need to map the inner 'posts' to our Post structure and wrap it
+          const originalPost = repost.posts;
+          
+          // If original post is missing/deleted, skip or handle gracefully
+          if (!originalPost) return null;
+
+          // Map the original post to our Post type (similar to how items are mapped if needed, but they seem to match)
+          // We also need to ensure author info is present on originalPost if it comes from join
+          // The backend returns joined profile as 'profiles' usually, but let's check structure
+          // socialService.getUserReposts returns `posts:original_post_id(...)` which includes `profiles`
+          
+          const mappedOriginalPost: Post = {
+            ...originalPost,
+            userId: originalPost.user_id,
+            createdAt: originalPost.created_at,
+            author: originalPost.profiles ? {
+              id: originalPost.profiles.id,
+              username: originalPost.profiles.username,
+              fullName: originalPost.profiles.full_name,
+              avatar: originalPost.profiles.avatar_url,
+            } : undefined,
+            // Map other fields if necessary, but basic structure seems compatible
+            workout: originalPost.workouts // if joined
+          };
+
+          return {
+            id: repost.id, // Use repost ID as the main ID for the feed item
+            content: '', // Repost wrapper doesn't have content usually, or maybe we want to support quote tweets later
+            createdAt: repost.reposted_at,
+            isRepost: true,
+            repostedAt: repost.reposted_at,
+            repostedBy: currentUser ? {
+              id: currentUser.id,
+              username: currentUser.username,
+              fullName: currentUser.full_name || currentUser.fullName,
+            } : { id: 'unknown' },
+            originalPost: mappedOriginalPost,
+            // Important: we need these for key props and sorting
+          } as Post;
+        }).filter(Boolean) as Post[];
+
         if (mounted) {
-          setPosts(items);
+          // Merge and sort by date (newest first)
+          const allItems = [...items, ...reposts].sort((a, b) => {
+            const dateA = new Date(a.createdAt || 0).getTime();
+            const dateB = new Date(b.createdAt || 0).getTime();
+            return dateB - dateA;
+          });
+
+          setPosts(allItems);
+          
           // Initialize liked and followed states
           const likedState: Record<string, boolean> = {};
           const followedState: Record<string, boolean> = {};
+          const repostedState: Record<string, boolean> = {};
 
           // Collect unique author IDs to check follow status
           const authorIds = new Set<string>();
 
           items.forEach((post: Post) => {
             if (post.isLiked) likedState[post.id] = true;
+            // Check if I have reposted this post (backend doesn't return isReposted flag on listPosts yet, 
+            // but we can check against my reposts list or just rely on state toggling for now.
+            // Actually, to show the green icon, we need to know if I reposted it.
+            // We can verify against the fetched reposts list!)
+            
             if (post.author?.id && currentUserId && post.author.id !== currentUserId) {
               authorIds.add(post.author.id);
             }
           });
 
+          // Mark posts that are in my reposts list as reposted
+          (repostsRes?.data || []).forEach((r: any) => {
+            if (r.original_post_id) {
+              repostedState[r.original_post_id] = true;
+            }
+          });
+
           setLiked(likedState);
+          setReposted(repostedState);
 
           // Check follow status for each author
           if (currentUserId) {
@@ -180,7 +261,7 @@ export default function SocialPage() {
       }
     })();
     return () => { mounted = false; };
-  }, [currentUserId]);
+  }, [currentUserId, currentUser]); // Added currentUser dependency to ensure we have info for reposts
 
   const filtered = useMemo(() => {
     if (!searchQuery.trim()) return posts;
@@ -562,7 +643,289 @@ export default function SocialPage() {
 
       {/* Posts */}
       <div className="space-y-4">
-        {filtered.map((post) => (
+        {filtered.map((item) => {
+          // Determine if this is a repost
+          if (item.isRepost && item.originalPost) {
+            const post = item.originalPost;
+            return (
+              <Card key={item.id} className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+                <CardHeader className="pb-2">
+                  <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mb-2">
+                    <Repeat2 className="h-4 w-4 text-emerald-500" />
+                    <span className="font-medium text-slate-700 dark:text-slate-300">
+                      {item.repostedBy?.id === currentUserId ? 'You' : item.repostedBy?.username || 'Someone'} reposted
+                    </span>
+                  </div>
+                  <div className="flex items-start justify-between">
+                    <div className="flex items-center gap-3">
+                      <Avatar className="h-10 w-10">
+                        <AvatarImage src={post.author?.avatar} />
+                        <AvatarFallback className="bg-emerald-500 text-white">
+                          {(post.author?.fullName || post.author?.username || 'U').charAt(0)}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div>
+                        <h3 className="text-slate-900 dark:text-white font-medium">
+                          {post.author?.username || post.author?.fullName || 'Usuario'}
+                        </h3>
+                        {post.createdAt && (
+                          <p className="text-sm text-slate-500 dark:text-slate-400">
+                            {new Date(post.createdAt).toLocaleString()}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    {/* We hide follow/delete buttons on the repost wrapper card for now, or we could add them for the original author */}
+                  </div>
+                </CardHeader>
+                <CardContent>
+                  <p className="text-slate-900 dark:text-white mb-4">{post.content}</p>
+
+                  {/* Images */}
+                  {post.image_urls && post.image_urls.length > 0 && (
+                    <div className="mb-4 flex flex-wrap gap-2">
+                      {post.image_urls.map((url: string, idx: number) => (
+                        <img
+                          key={idx}
+                          src={url}
+                          alt={`Post image ${idx + 1}`}
+                          onClick={() => setPreviewImage(url)}
+                          className="max-h-64 max-w-full rounded border border-slate-300 dark:border-slate-700 cursor-pointer hover:opacity-90 transition-opacity"
+                          onError={(e) => {
+                            (e.target as HTMLImageElement).style.display = 'none';
+                          }}
+                        />
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Workout Reference */}
+                  {(post.workout || post.workout_id) && (
+                    <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded">
+                      <div className="flex items-center justify-between mb-1">
+                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">📋 Referenced Workout</p>
+                        {post.workout?.difficulty && (
+                          <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 capitalize">
+                            {post.workout.difficulty}
+                          </span>
+                        )}
+                      </div>
+                      <p className="text-sm font-medium text-slate-900 dark:text-white">
+                        {post.workout?.name || `Workout ID: ${post.workout_id}`}
+                      </p>
+                      {post.workout?.description && (
+                        <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
+                          {post.workout.description}
+                        </p>
+                      )}
+                      <Button
+                        onClick={() => handleCopyWorkout(post.workout?.id || post.workout_id!)}
+                        disabled={loading}
+                        variant="ghost"
+                        size="sm"
+                        className="mt-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 h-auto py-1 px-2 text-xs"
+                      >
+                        📋 Copy This Workout
+                      </Button>
+                    </div>
+                  )}
+
+                  <div className="flex items-center gap-4">
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleLike(post.id)}
+                      className={liked[post.id] || post.isLiked ? 'text-pink-500' : 'text-slate-600 dark:text-slate-400 hover:text-pink-500'}
+                    >
+                      <Heart className={`h-4 w-4 mr-2 ${liked[post.id] || post.isLiked ? 'fill-pink-500' : ''}`} />
+                      {(post.likesCount ?? 0) + ((liked[post.id] && !post.isLiked) ? 1 : 0)}
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-slate-600 dark:text-slate-400"
+                      onClick={() => handleLoadComments(post.id)}
+                    >
+                      {post.commentsCount ?? 0} comments
+                    </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => handleRepost(post.id)}
+                      className={reposted[post.id] ? 'text-emerald-500' : 'text-slate-600 dark:text-slate-400 hover:text-emerald-500'}
+                    >
+                      <Repeat2 className={`h-4 w-4 mr-2 ${reposted[post.id] ? 'fill-emerald-500' : ''}`} />
+                      {(post.reposts_count || 0) + (reposted[post.id] ? 1 : 0)}
+                    </Button>
+                  </div>
+                  {/* Comments Section */}
+                  {showComments[post.id] && comments[post.id] && (
+                    <div className="mt-4 space-y-3 pt-4 border-t border-slate-200 dark:border-slate-700">
+                      {comments[post.id]?.map((comment) => (
+                        <div key={comment.id} className="flex items-start gap-3">
+                          <Avatar className="h-8 w-8">
+                            <AvatarImage src={comment.author?.avatar} />
+                            <AvatarFallback className="bg-pink-500 text-white text-xs">
+                              {(comment.author?.fullName || comment.author?.username || 'U').charAt(0)}
+                            </AvatarFallback>
+                          </Avatar>
+                          <div className="flex-1">
+                            <div className="flex items-center gap-2 mb-1">
+                              <span className="text-sm font-medium text-slate-900 dark:text-white">
+                                {comment.author?.username || comment.author?.fullName || 'Usuario'}
+                              </span>
+                              {/* ... rest of comment rendering ... */}
+                              <div className="flex items-center gap-1 ml-auto">
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  className="h-6 w-6 p-0 text-slate-600 dark:text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10"
+                                  onClick={() => setReplyingTo({ postId: post.id, commentId: comment.id })}
+                                >
+                                  <MessageCircle className="h-3 w-3" />
+                                </Button>
+                                {currentUserId && (comment.userId === currentUserId || post.userId === currentUserId) && (
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-6 w-6 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10"
+                                    onClick={() => setDeleteCommentDialog({ open: true, postId: post.id, commentId: comment.id })}
+                                  >
+                                    <Trash2 className="h-3 w-3" />
+                                  </Button>
+                                )}
+                              </div>
+                            </div>
+                            <p className="text-sm text-slate-700 dark:text-slate-300">{comment.content}</p>
+                            {comment.createdAt && (
+                              <span className="text-xs text-slate-500 dark:text-slate-400">
+                                {new Date(comment.createdAt).toLocaleString()}
+                              </span>
+                            )}
+                            {/* Reply Input Form */}
+                            {replyingTo?.commentId === comment.id && replyingTo?.postId === post.id && (
+                              <div className="mt-2 ml-4 space-y-2 pt-2 border-l-2 border-emerald-500 pl-3">
+                                <div className="flex gap-2">
+                                  <input
+                                    type="text"
+                                    placeholder={t('social.writeReply')}
+                                    value={replyContent}
+                                    onChange={(e) => setReplyContent(e.target.value)}
+                                    onKeyDown={(e) => {
+                                      if (e.key === 'Enter' && !e.shiftKey) {
+                                        e.preventDefault();
+                                        handlePostReply(post.id, comment.id);
+                                      }
+                                    }}
+                                    className="flex-1 px-2 py-1 bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded text-slate-900 dark:text-white text-xs placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                                    autoFocus
+                                  />
+                                  <Button
+                                    onClick={() => handlePostReply(post.id, comment.id)}
+                                    disabled={!replyContent?.trim()}
+                                    size="sm"
+                                    className="bg-emerald-500 hover:bg-emerald-600 text-white h-auto px-2 py-1 text-xs"
+                                  >
+                                    {t('social.reply')}
+                                  </Button>
+                                  <Button
+                                    onClick={() => {
+                                      setReplyingTo(null);
+                                      setReplyContent('');
+                                    }}
+                                    variant="outline"
+                                    size="sm"
+                                    className="border-slate-300 dark:border-slate-700 h-auto px-2 py-1 text-xs"
+                                  >
+                                    {t('social.cancel')}
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
+                            {/* Replies */}
+                            {comment.replies && comment.replies.length > 0 && (
+                              <div className="mt-2 ml-4 space-y-2 border-l-2 border-slate-200 dark:border-slate-700 pl-3">
+                                {comment.replies?.map((reply) => (
+                                  <div key={reply.id} className="flex items-start gap-2">
+                                    <Avatar className="h-6 w-6">
+                                      <AvatarImage src={reply.author?.avatar} />
+                                      <AvatarFallback className="bg-pink-500 text-white text-xs">
+                                        {(reply.author?.fullName || reply.author?.username || 'U').charAt(0)}
+                                      </AvatarFallback>
+                                    </Avatar>
+                                    <div className="flex-1">
+                                      <div className="flex items-center gap-2 mb-1">
+                                        <span className="text-xs font-medium text-slate-900 dark:text-white">
+                                          {reply.author?.username || reply.author?.fullName || 'Usuario'}
+                                        </span>
+                                        {currentUserId && (reply.userId === currentUserId || post.userId === currentUserId) && (
+                                          <Button
+                                            variant="ghost"
+                                            size="sm"
+                                            className="h-5 w-5 p-0 text-red-500 hover:text-red-600 hover:bg-red-500/10 ml-auto"
+                                            onClick={() => setDeleteCommentDialog({ open: true, postId: post.id, commentId: reply.id })}
+                                          >
+                                            <Trash2 className="h-3 w-3" />
+                                          </Button>
+                                        )}
+                                      </div>
+                                      <p className="text-xs text-slate-700 dark:text-slate-300">{reply.content}</p>
+                                      {reply.createdAt && (
+                                        <span className="text-xs text-slate-500 dark:text-slate-400">
+                                          {new Date(reply.createdAt).toLocaleString()}
+                                        </span>
+                                      )}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {/* Add Comment Section */}
+                  {showComments[post.id] && (
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700 space-y-3">
+                      <div className="flex gap-2">
+                        <input
+                          type="text"
+                          placeholder="Write a comment..."
+                          value={commentContent[post.id] || ''}
+                          onChange={(e) =>
+                            setCommentContent((prev) => ({
+                              ...prev,
+                              [post.id]: e.target.value,
+                            }))
+                          }
+                          onKeyDown={(e) => {
+                            if (e.key === 'Enter' && !e.shiftKey) {
+                              e.preventDefault();
+                              handlePostComment(post.id);
+                            }
+                          }}
+                          className="flex-1 px-3 py-2 bg-slate-100 dark:bg-slate-900/50 border border-slate-200 dark:border-slate-700 rounded text-slate-900 dark:text-white text-sm placeholder-slate-500 focus:outline-none focus:ring-2 focus:ring-emerald-500"
+                        />
+                        <Button
+                          onClick={() => handlePostComment(post.id)}
+                          disabled={!commentContent[post.id]?.trim()}
+                          size="sm"
+                          className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                        >
+                          Post
+                        </Button>
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          }
+
+          // Regular Post
+          const post = item;
+          return (
           <Card key={post.id} className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
             <CardHeader>
               <div className="flex items-start justify-between">
@@ -850,7 +1213,8 @@ export default function SocialPage() {
               )}
             </CardContent>
           </Card>
-        ))}
+          );
+        })}
         {filtered.length === 0 && (
           <div className="text-slate-400">No posts yet.</div>
         )}

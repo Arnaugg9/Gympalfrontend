@@ -270,6 +270,31 @@ export async function getPostCount(userId: string) {
 }
 
 /**
+ * Get user's reposts
+ */
+export async function getUserReposts(userId: string, page: number = 1, limit: number = 20) {
+  apiLogger.info({ endpoint: `/api/v1/social/users/${userId}/reposts`, page, limit }, 'Get user reposts request');
+  try {
+    const params = new URLSearchParams({
+      page: page.toString(),
+      limit: limit.toString(),
+    });
+    const wrappedRes = await http.get<any>(`/api/v1/social/users/${userId}/reposts?${params}`);
+    const data = wrappedRes?.data;
+    if (!data) throw new Error('No reposts in response');
+    
+    apiLogger.info({}, 'Get user reposts success');
+    return {
+      data: data || [],
+      pagination: wrappedRes.pagination
+    };
+  } catch (err) {
+    logError(err as Error, { endpoint: `/api/v1/social/users/${userId}/reposts` });
+    throw err;
+  }
+}
+
+/**
  * Social API object for convenience
  */
 export const socialApi = {
@@ -280,6 +305,7 @@ export const socialApi = {
   deletePost: deletePost,
   like: togglePostLike,
   repost: togglePostRepost,
+  getUserReposts: getUserReposts,
   comments: listPostComments,
   createComment: createPostComment,
   deleteComment: deletePostComment,
