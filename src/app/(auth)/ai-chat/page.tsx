@@ -3,24 +3,178 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
-import { Send, Dumbbell, Utensils, Calendar, Sparkles } from 'lucide-react';
+import { Send, Dumbbell, Utensils, Calendar, Sparkles, Loader2, User, Plus, MessageSquare, Trash2, Mic, MicOff } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
+import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
 import { useTranslation } from 'react-i18next';
+import { aiChatApi } from '@/features/ai-chat/api/ai-chat.api';
+import { toast } from 'sonner';
+import { profileApi } from '@/features/profile/api/profile.api';
+import { format } from 'date-fns';
 
 export default function AIChatPage() {
   const { t } = useTranslation();
-  const [messages, setMessages] = useState([
-    {
-      role: 'assistant',
-      content: t('aiChat.greeting'),
-    },
-  ]);
+  const [messages, setMessages] = useState<{role: string, content: string}[]>([]);
+  const [conversations, setConversations] = useState<any[]>([]);
+  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [input, setInput] = useState('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [isInitialLoading, setIsInitialLoading] = useState(true);
+  const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (typeof window !== 'undefined' && (window as any).webkitSpeechRecognition) {
+      const SpeechRecognition = (window as any).webkitSpeechRecognition;
+      recognitionRef.current = new SpeechRecognition();
+      recognitionRef.current.continuous = true;
+      recognitionRef.current.interimResults = true;
+      recognitionRef.current.lang = 'es-ES'; // Default to Spanish as per context
+
+      recognitionRef.current.onresult = (event: any) => {
+        let interimTranscript = '';
+        let finalTranscript = '';
+
+        for (let i = event.resultIndex; i < event.results.length; ++i) {
+          if (event.results[i].isFinal) {
+            finalTranscript += event.results[i][0].transcript;
+          } else {
+            interimTranscript += event.results[i][0].transcript;
+          }
+        }
+        
+        // Append final transcript to input
+        if (finalTranscript) {
+            setInput(prev => {
+                const space = prev.length > 0 && !prev.endsWith(' ') ? ' ' : '';
+                return prev + space + finalTranscript;
+            });
+        }
+      };
+
+      recognitionRef.current.onerror = (event: any) => {
+        console.error('Speech recognition error', event.error);
+        setIsRecording(false);
+        
+        if (event.error === 'not-allowed') {
+            toast.error('Microphone access denied. Please check your permissions.');
+        } else if (event.error === 'no-speech') {
+            // Ignore no-speech errors, often just means silence
+        } else if (event.error === 'audio-capture') {
+            toast.error('No microphone found or audio capture failed.');
+        } else {
+            toast.error(`Voice recognition error: ${event.error}`);
+        }
+      };
+
+      recognitionRef.current.onend = () => {
+        setIsRecording(false);
+      };
+    }
+  }, []);
+
+  const toggleRecording = async () => {
+    if (!recognitionRef.current) {
+      toast.error('Speech recognition not supported in this browser.');
+      return;
+    }
+
+    if (isRecording) {
+      recognitionRef.current.stop();
+      setIsRecording(false);
+    } else {
+      try {
+        // Explicitly request microphone access first to handle permissions/errors better
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        // Stop the stream immediately, we just wanted to check permission/existence
+        stream.getTracks().forEach(track => track.stop());
+
+        recognitionRef.current.start();
+        setIsRecording(true);
+        toast.success('Listening...');
+      } catch (error: any) {
+        console.error('Failed to start recording:', error);
+        if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
+            toast.error('Microphone permission denied. Please allow access.');
+        } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
+            toast.error('No microphone found on this device.');
+        } else {
+            toast.error('Could not access microphone.');
+        }
+      }
+    }
+  };
+
+  useEffect(() => {
+    const loadInitialData = async () => {
+      setIsInitialLoading(true);
+      try {
+        const [{ data: profile }, { data: conversationsData }] = await Promise.all([
+          profileApi.getProfile(),
+          aiChatApi.getConversations().catch(() => ({ data: { conversations: [] } }))
+        ]);
+
+        if (profile?.avatar_url) {
+          setUserAvatar(profile.avatar_url);
+        }
+
+        const fetchedConversations = conversationsData?.conversations || [];
+        setConversations(fetchedConversations);
+
+        if (fetchedConversations.length > 0) {
+          // Load the latest conversation by default
+          const latestConversation = fetchedConversations[0];
+          setCurrentConversationId(latestConversation.id);
+          loadMessages(latestConversation.id);
+        } else {
+           setMessages([
+            {
+              role: 'assistant',
+              content: t('aiChat.greeting'),
+            },
+          ]);
+        }
+      } catch (error) {
+        console.error('Failed to load initial data:', error);
+        setMessages([
+          {
+            role: 'assistant',
+            content: t('aiChat.greeting'),
+          },
+        ]);
+      } finally {
+        setIsInitialLoading(false);
+      }
+    };
+
+    loadInitialData();
+  }, [t]);
+
+  const loadMessages = async (conversationId: string) => {
+    setIsLoading(true);
+    try {
+      const response = await aiChatApi.getConversationMessages(conversationId);
+      const history = response.data.messages || [];
+      if (history.length > 0) {
+        setMessages(history.map((msg: any) => ({
+          role: msg.role,
+          content: msg.content
+        })));
+      } else {
+        setMessages([{ role: 'assistant', content: t('aiChat.greeting') }]);
+      }
+    } catch (error) {
+      console.error('Failed to load messages:', error);
+      toast.error('Failed to load conversation history');
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -30,22 +184,87 @@ export default function AIChatPage() {
     scrollToBottom();
   }, [messages]);
 
-  const handleSend = () => {
-    if (!input.trim()) return;
+  const handleCreateNewChat = async () => {
+    try {
+      const { data: newConversation } = await aiChatApi.startConversation('New Chat');
+      setConversations([newConversation, ...conversations]);
+      setCurrentConversationId(newConversation.id);
+      setMessages([{ role: 'assistant', content: t('aiChat.greeting') }]);
+    } catch (error) {
+      console.error('Failed to create new chat:', error);
+      toast.error('Failed to start new conversation');
+    }
+  };
 
-    // Backend AI endpoint no disponible aún en openapi; mantenemos respuesta simulada
-    setMessages([...messages, { role: 'user', content: input }]);
+  const handleDeleteChat = async (e: React.MouseEvent, conversationId: string) => {
+    e.stopPropagation();
+    try {
+      await aiChatApi.deleteConversation(conversationId);
+      const updatedConversations = conversations.filter(c => c.id !== conversationId);
+      setConversations(updatedConversations);
+      
+      if (currentConversationId === conversationId) {
+        if (updatedConversations.length > 0) {
+          setCurrentConversationId(updatedConversations[0].id);
+          loadMessages(updatedConversations[0].id);
+        } else {
+          setCurrentConversationId(null);
+          setMessages([{ role: 'assistant', content: t('aiChat.greeting') }]);
+        }
+      }
+      toast.success('Conversation deleted');
+    } catch (error) {
+      console.error('Failed to delete chat:', error);
+      toast.error('Failed to delete conversation');
+    }
+  };
+
+  const handleSelectConversation = (conversationId: string) => {
+    if (conversationId === currentConversationId) return;
+    setCurrentConversationId(conversationId);
+    loadMessages(conversationId);
+  };
+
+  const handleSend = async () => {
+    if (!input.trim() || isLoading) return;
+
+    const userMessage = input.trim();
+    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setInput('');
+    setIsLoading(true);
 
-    setTimeout(() => {
-      setMessages((prev) => [
+    try {
+      // If no current conversation, create one first
+      let targetConversationId = currentConversationId;
+      if (!targetConversationId) {
+         const { data: newConversation } = await aiChatApi.startConversation(userMessage.substring(0, 30) + '...');
+         setConversations([newConversation, ...conversations]);
+         setCurrentConversationId(newConversation.id);
+         targetConversationId = newConversation.id;
+      }
+
+      const response = await aiChatApi.chatWithAgent(userMessage, targetConversationId!);
+      
+      setMessages(prev => [
         ...prev,
         {
           role: 'assistant',
-          content: t('aiChat.greeting'),
+          content: response.data.response,
         },
       ]);
-    }, 1000);
+    } catch (error) {
+      console.error('Chat error:', error);
+      toast.error('Failed to communicate with AI Agent');
+      setMessages(prev => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: "Sorry, I'm having trouble connecting to the agent right now. Please try again later.",
+        },
+      ]);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const suggestedPrompts = [
@@ -115,88 +334,172 @@ export default function AIChatPage() {
         </Link>
       </div>
 
-      {/* Chat Interface */}
-      <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 h-[calc(100vh-280px)] flex flex-col">
-        <CardContent className="p-0 flex-1 flex flex-col">
-          {/* Messages */}
-          <ScrollArea className="flex-1 p-6">
-            <div className="space-y-4">
-              {messages.map((message, index) => (
+      {/* Chat Container */}
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 h-[calc(100vh-280px)] min-h-[500px]">
+        
+        {/* Sidebar - Conversations List */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 lg:col-span-1 flex flex-col overflow-hidden h-full">
+          <div className="p-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
+            <Button 
+              onClick={handleCreateNewChat}
+              className="w-full bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-600"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              New Chat
+            </Button>
+          </div>
+          <ScrollArea className="flex-1 h-full">
+            <div className="p-2 space-y-1">
+              {conversations.map((conv) => (
                 <div
-                  key={index}
-                  className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
+                  key={conv.id}
+                  onClick={() => handleSelectConversation(conv.id)}
+                  className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors group ${
+                    currentConversationId === conv.id
+                      ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
+                      : 'hover:bg-slate-100 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-300'
+                  }`}
                 >
-                  <Avatar className={message.role === 'assistant' ? 'bg-gradient-to-br from-purple-500 to-pink-500' : 'bg-gradient-to-br from-emerald-500 to-teal-500'}>
-                    <AvatarFallback className="text-white bg-transparent">
-                      {message.role === 'assistant' ? <Sparkles className="h-5 w-5" /> : 'U'}
-                    </AvatarFallback>
-                  </Avatar>
-                  <div
-                    className={`rounded-lg p-4 max-w-[70%] ${
-                      message.role === 'user'
-                        ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
-                        : 'bg-slate-100 dark:bg-slate-700/50 text-slate-900 dark:text-slate-200'
-                    }`}
-                  >
-                    {message.content}
+                  <div className="flex items-center gap-3 overflow-hidden">
+                    <MessageSquare className="h-4 w-4 flex-shrink-0" />
+                    <div className="flex flex-col overflow-hidden">
+                      <span className="truncate text-sm font-medium">{conv.title || 'New Chat'}</span>
+                      <span className="text-xs text-slate-500 dark:text-slate-500">
+                        {format(new Date(conv.created_at), 'MMM d, HH:mm')}
+                      </span>
+                    </div>
                   </div>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500"
+                    onClick={(e) => handleDeleteChat(e, conv.id)}
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                 </div>
               ))}
-              <div ref={messagesEndRef} />
+              {conversations.length === 0 && (
+                <div className="text-center p-4 text-slate-500 text-sm">
+                  No conversations yet
+                </div>
+              )}
             </div>
           </ScrollArea>
+        </Card>
 
-          {/* Suggested Prompts - shown when no user messages */}
-          {messages.length === 1 && (
-            <div className="p-4 border-t border-slate-200 dark:border-slate-700/50">
-              <p className="text-slate-600 dark:text-slate-400 text-sm mb-3">Quick suggestions:</p>
-              <div className="grid grid-cols-2 gap-2">
-                {suggestedPrompts.map((prompt, index) => {
-                  const Icon = prompt.icon;
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => setInput(prompt.text)}
-                      className="flex items-start gap-2 p-3 bg-slate-100 dark:bg-slate-700/30 hover:bg-slate-200 dark:hover:bg-slate-700/50 rounded-lg text-left transition-colors group"
+        {/* Main Chat Area */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 lg:col-span-3 flex flex-col overflow-hidden h-full">
+          <CardContent className="p-0 flex-1 flex flex-col h-full min-h-0">
+            {/* Messages */}
+            <ScrollArea className="flex-1 p-6 h-full">
+              {isInitialLoading ? (
+                <div className="flex h-full items-center justify-center">
+                  <div className="flex flex-col items-center gap-4">
+                     <div className="relative flex h-16 w-16">
+                       <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-20"></span>
+                       <span className="relative inline-flex rounded-full h-16 w-16 bg-purple-100 dark:bg-purple-900/30 items-center justify-center">
+                         <Sparkles className="h-8 w-8 text-purple-500 animate-pulse" />
+                       </span>
+                     </div>
+                     <p className="text-slate-500 dark:text-slate-400 text-sm animate-pulse">Loading conversation...</p>
+                  </div>
+                </div>
+              ) : (
+              <div className="space-y-4">
+                {messages.map((message, index) => (
+                  <div
+                    key={index}
+                    className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
+                  >
+                    <Avatar className={message.role === 'assistant' ? 'bg-gradient-to-br from-purple-500 to-pink-500' : 'bg-gradient-to-br from-emerald-500 to-teal-500'}>
+                      {message.role === 'user' && userAvatar ? (
+                        <AvatarImage src={userAvatar} alt="User" />
+                      ) : null}
+                      <AvatarFallback className="text-white bg-transparent">
+                        {message.role === 'assistant' ? <Sparkles className="h-5 w-5" /> : <User className="h-5 w-5" />}
+                      </AvatarFallback>
+                    </Avatar>
+                    <div
+                      className={`rounded-lg p-4 max-w-[85%] md:max-w-[70%] ${
+                        message.role === 'user'
+                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
+                          : 'bg-slate-100 dark:bg-slate-700/50 text-slate-900 dark:text-slate-200'
+                      }`}
                     >
-                      <Icon className={`h-4 w-4 text-${prompt.color}-500 flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform`} />
-                      <span className="text-slate-700 dark:text-slate-300 text-sm">{prompt.text}</span>
-                    </button>
-                  );
-                })}
+                      {message.content}
+                    </div>
+                  </div>
+                ))}
+                <div ref={messagesEndRef} />
               </div>
-            </div>
-          )}
+              )}
+            </ScrollArea>
 
-          {/* Input */}
-          <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50">
-            <div className="flex gap-2">
-              <Textarea
-                placeholder={t('aiChat.placeholder')}
-                className="min-h-[60px] max-h-[150px] bg-background border-border text-foreground resize-none"
-                value={input}
-                onChange={(e) => setInput(e.target.value)}
-                onKeyDown={(e) => {
-                  if (e.key === 'Enter' && !e.shiftKey) {
-                    e.preventDefault();
-                    handleSend();
-                  }
-                }}
-              />
-              <Button
-                onClick={handleSend}
-                disabled={!input.trim()}
-                className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white self-end"
-              >
-                <Send className="h-4 w-4" />
-              </Button>
+            {/* Suggested Prompts - shown when no user messages */}
+            {messages.length === 1 && (
+              <div className="p-4 border-t border-slate-200 dark:border-slate-700/50">
+                <p className="text-slate-600 dark:text-slate-400 text-sm mb-3">Quick suggestions:</p>
+                <div className="grid grid-cols-2 gap-2">
+                  {suggestedPrompts.map((prompt, index) => {
+                    const Icon = prompt.icon;
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => setInput(prompt.text)}
+                        className="flex items-start gap-2 p-3 bg-slate-100 dark:bg-slate-700/30 hover:bg-slate-200 dark:hover:bg-slate-700/50 rounded-lg text-left transition-colors group"
+                      >
+                        <Icon className={`h-4 w-4 text-${prompt.color}-500 flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform`} />
+                        <span className="text-slate-700 dark:text-slate-300 text-sm">{prompt.text}</span>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* Input */}
+            <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 shrink-0">
+              <div className="flex gap-2 items-end">
+                <Button
+                  onClick={toggleRecording}
+                  variant="outline"
+                  className={`flex-shrink-0 h-10 w-10 p-0 rounded-full border-slate-300 dark:border-slate-600 ${
+                    isRecording 
+                      ? 'bg-red-100 text-red-600 border-red-500 animate-pulse dark:bg-red-900/30 dark:text-red-400' 
+                      : 'bg-background hover:bg-slate-100 dark:hover:bg-slate-800'
+                  }`}
+                  title={isRecording ? "Stop recording" : "Start recording"}
+                >
+                  {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+                </Button>
+                <Textarea
+                  placeholder={isRecording ? "Listening..." : t('aiChat.placeholder')}
+                  className="min-h-[40px] max-h-[150px] bg-background border-border text-foreground resize-none"
+                  value={input}
+                  onChange={(e) => setInput(e.target.value)}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
+                />
+                <Button
+                  onClick={handleSend}
+                  disabled={!input.trim() || isLoading}
+                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white h-10 px-4"
+                >
+                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                </Button>
+              </div>
+              <p className="text-slate-500 text-xs mt-2">
+                {t('aiChat.subtitle')}
+              </p>
             </div>
-            <p className="text-slate-500 text-xs mt-2">
-              {t('aiChat.subtitle')}
-            </p>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

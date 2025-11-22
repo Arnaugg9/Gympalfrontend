@@ -3,7 +3,7 @@ import { ReactNode, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Dumbbell, Users, Calendar, TrendingUp, User, CreditCard, Zap, Activity } from 'lucide-react';
+import { Home, Dumbbell, Users, Calendar, TrendingUp, User, CreditCard, Zap, Activity, Sparkles } from 'lucide-react';
 import ChatWidget from '@/components/shared/ChatWidget';
 import ThemeToggle from './ThemeToggle';
 import LanguageToggle from './LanguageToggle';
@@ -33,6 +33,7 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { icon: Users, label: t('nav.social'), path: '/social' },
     { icon: Calendar, label: t('nav.calendar'), path: '/calendar' },
     { icon: TrendingUp, label: t('nav.progress'), path: '/progress' },
+    { icon: Sparkles, label: 'AI Chat', path: '/ai-chat' },
     { icon: User, label: t('nav.profile'), path: '/profile' },
     { icon: CreditCard, label: t('nav.plans'), path: '/plans' },
   ];
@@ -75,18 +76,24 @@ export default function AppLayout({ children }: AppLayoutProps) {
               {navItems.map((item) => {
                 const Icon = item.icon;
                 const isActive = isNavItemActive(item.path);
+                const isAIChat = item.path === '/ai-chat';
+                
                 return (
                   <Link
                     key={item.path}
                     href={item.path}
                     className={`flex items-center space-x-2 px-3 py-2 rounded-lg transition-colors ${
                       isActive
-                        ? 'bg-emerald-500 text-white'
-                        : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
+                        ? isAIChat 
+                          ? 'bg-gradient-to-r from-purple-500 to-pink-500 text-white shadow-md shadow-purple-500/20' 
+                          : 'bg-emerald-500 text-white'
+                        : isAIChat
+                          ? 'text-purple-600 dark:text-purple-400 hover:bg-purple-50 dark:hover:bg-purple-900/20'
+                          : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700/50'
                     }`}
                   >
-                    <Icon className="h-4 w-4" />
-                    <span className="text-sm">{item.label}</span>
+                    <Icon className={`h-4 w-4 ${isAIChat && !isActive ? 'text-purple-500' : ''}`} />
+                    <span className="text-sm font-medium">{item.label}</span>
                   </Link>
                 );
               })}
@@ -111,15 +118,20 @@ export default function AppLayout({ children }: AppLayoutProps) {
       {/* Mobile Bottom Navigation */}
       <nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white/95 dark:bg-slate-800/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-700/50">
         <div className="flex justify-around items-center h-16 px-2">
-          {[navItems[0], navItems[2], navItems[3], navItems[5], navItems[7]].filter(Boolean).map((item: any) => {
+          {/* Mobile Nav: Home, Workouts, Social, Calendar, Profile */}
+          {[navItems[0], navItems[2], navItems[3], navItems[4], navItems[7]].filter(Boolean).map((item: any) => {
             const Icon = item.icon;
             const isActive = isNavItemActive(item.path);
+            const isAIChat = item.path === '/ai-chat';
+            
             return (
               <Link
                 key={item.path}
                 href={item.path}
                 className={`flex flex-col items-center justify-center space-y-1 p-2 rounded-lg transition-colors ${
-                  isActive ? 'text-emerald-500' : 'text-slate-500 dark:text-slate-400'
+                  isActive 
+                    ? isAIChat ? 'text-purple-500' : 'text-emerald-500' 
+                    : isAIChat ? 'text-purple-400/70' : 'text-slate-500 dark:text-slate-400'
                 }`}
               >
                 <Icon className="h-5 w-5" />

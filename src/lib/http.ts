@@ -77,39 +77,69 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
+  // Default timeout of 120 seconds (2 minutes) to handle slow AI responses
+  const timeout = 120000;
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  
   const method = (options.method || 'GET') as HttpMethod;
   const startedAt = Date.now();
   apiLogger.debug({ method, path, url }, 'HTTP request start');
-  let res = await fetch(url, { ...options, headers, credentials: 'include' });
-  if (res.status === 401) {
-    const newToken = await refreshAccessToken();
-    if (newToken) {
-      apiLogger.debug({ path, url }, 'Retrying request with refreshed token');
-      res = await fetch(url, { ...options, headers: { ...headers, Authorization: `Bearer ${newToken}` }, credentials: 'include' });
-    } else {
-      clearTokens();
-    }
-  }
-  if (!res.ok) {
-    // Try to parse a JSON error body for better client-side handling
-    let parsed: any = null;
-    const text = await res.text().catch(() => '');
-    try {
-      parsed = text ? JSON.parse(text) : null;
-    } catch (e) {
-      parsed = null;
-    }
+  
+  try {
+    let res = await fetch(url, { 
+      ...options, 
+      headers, 
+      credentials: 'include',
+      signal: options.signal || controller.signal 
+    });
+    clearTimeout(id);
 
-    const message = parsed?.error?.message || parsed?.message || text || `HTTP ${res.status}`;
-    const error = new Error(message);
-    (error as any).response = { data: parsed, status: res.status };
-    logError(error as Error, { method, path, status: res.status, durationMs: Date.now() - startedAt });
-    throw error;
+    if (res.status === 401) {
+      const newToken = await refreshAccessToken();
+      if (newToken) {
+        apiLogger.debug({ path, url }, 'Retrying request with refreshed token');
+        // Create new controller for retry
+        const retryController = new AbortController();
+        const retryId = setTimeout(() => retryController.abort(), timeout);
+        try {
+          res = await fetch(url, { 
+            ...options, 
+            headers: { ...headers, Authorization: `Bearer ${newToken}` }, 
+            credentials: 'include',
+            signal: options.signal || retryController.signal
+          });
+        } finally {
+          clearTimeout(retryId);
+        }
+      } else {
+        clearTokens();
+      }
+    }
+    if (!res.ok) {
+      // Try to parse a JSON error body for better client-side handling
+      let parsed: any = null;
+      const text = await res.text().catch(() => '');
+      try {
+        parsed = text ? JSON.parse(text) : null;
+      } catch (e) {
+        parsed = null;
+      }
+
+      const message = parsed?.error?.message || parsed?.message || text || `HTTP ${res.status}`;
+      const error = new Error(message);
+      (error as any).response = { data: parsed, status: res.status };
+      logError(error as Error, { method, path, status: res.status, durationMs: Date.now() - startedAt });
+      throw error;
+    }
+    const contentType = res.headers.get('content-type') || '';
+    apiLogger.info({ method, path, status: res.status, durationMs: Date.now() - startedAt }, 'HTTP request success');
+    if (contentType.includes('application/json')) return (await res.json()) as T;
+    return (await res.text()) as unknown as T;
+  } catch (err) {
+    clearTimeout(id);
+    throw err;
   }
-  const contentType = res.headers.get('content-type') || '';
-  apiLogger.info({ method, path, status: res.status, durationMs: Date.now() - startedAt }, 'HTTP request success');
-  if (contentType.includes('application/json')) return (await res.json()) as T;
-  return (await res.text()) as unknown as T;
 }
 
 export const http = {
