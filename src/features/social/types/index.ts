@@ -17,6 +17,13 @@ export type Post = {
   reposts_count?: number;
   createdAt?: string;
   isLiked?: boolean;
+  workout?: {
+    id: string;
+    name: string;
+    description?: string;
+    difficulty?: string;
+    duration_minutes?: number;
+  };
 };
 
 export type Comment = {

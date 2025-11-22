@@ -43,6 +43,13 @@ type Post = {
   userId?: string; // ID of the post owner
   user_id?: string;
   workout_id?: string;
+  workout?: {
+    id: string;
+    name: string;
+    description?: string;
+    difficulty?: string;
+    duration_minutes?: number;
+  };
 };
 
 type Comment = {
@@ -226,6 +233,20 @@ export default function SocialPage() {
           email: currentUser.email,
           avatar: currentUser.avatar_url || currentUser.avatar
         };
+      }
+
+      // Add workout info if selected
+      if (selectedWorkoutId) {
+         const selectedWorkout = userWorkouts.find(w => w.id === selectedWorkoutId);
+         if (selectedWorkout) {
+             newPost.workout = {
+                 id: selectedWorkout.id,
+                 name: selectedWorkout.name,
+                 description: selectedWorkout.description,
+                 difficulty: selectedWorkout.difficulty,
+                 duration_minutes: selectedWorkout.duration_minutes
+             };
+         }
       }
 
       setPosts((prev) => [newPost, ...prev]);
@@ -596,16 +617,30 @@ export default function SocialPage() {
               )}
 
               {/* Workout Reference */}
-              {post.workout_id && (
+              {(post.workout || post.workout_id) && (
                 <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded">
-                  <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400 mb-1">📋 Referenced Workout</p>
-                  <p className="text-sm text-slate-900 dark:text-white">Workout ID: {post.workout_id}</p>
+                  <div className="flex items-center justify-between mb-1">
+                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">📋 Referenced Workout</p>
+                    {post.workout?.difficulty && (
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 capitalize">
+                        {post.workout.difficulty}
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-sm font-medium text-slate-900 dark:text-white">
+                    {post.workout?.name || `Workout ID: ${post.workout_id}`}
+                  </p>
+                  {post.workout?.description && (
+                    <p className="text-xs text-slate-600 dark:text-slate-400 mt-1 line-clamp-2">
+                      {post.workout.description}
+                    </p>
+                  )}
                   <Button
-                    onClick={() => handleCopyWorkout(post.workout_id!)}
+                    onClick={() => handleCopyWorkout(post.workout?.id || post.workout_id!)}
                     disabled={loading}
                     variant="ghost"
                     size="sm"
-                    className="mt-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30"
+                    className="mt-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 h-auto py-1 px-2 text-xs"
                   >
                     📋 Copy This Workout
                   </Button>
@@ -987,11 +1022,12 @@ export default function SocialPage() {
         </AlertDialogContent>
       </AlertDialog>
       {/* Image Preview Viewer */}
-      <ImageViewer
-        src={previewImage}
-        isOpen={!!previewImage}
-        onClose={() => setPreviewImage(null)}
-      />
+      {previewImage && (
+        <ImageViewer
+          imageUrl={previewImage}
+          onClose={() => setPreviewImage(null)}
+        />
+      )}
     </div>
   );
 }
