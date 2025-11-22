@@ -192,13 +192,13 @@ export async function updateUserProfile(profile: Partial<Unified.UpdateProfileRe
 /**
  * Delete user account permanently
  */
-export async function deleteAccount() {
-  apiLogger.info({ endpoint: '/api/v1/users/account' }, 'Delete account request');
+export async function deleteAccount(userId: string) {
+  apiLogger.info({ endpoint: `/api/v1/auth/delete-account/${userId}` }, 'Delete account request');
   try {
-    await http.delete<ApiResponse<any>>('/api/v1/users/account');
+    await http.delete<ApiResponse<any>>(`/api/v1/auth/delete-account/${userId}`);
     apiLogger.info({}, 'Delete account success');
   } catch (err) {
-    logError(err as Error, { endpoint: '/api/v1/users/account' });
+    logError(err as Error, { endpoint: '/api/v1/auth/delete-account' });
     throw err;
   }
 }

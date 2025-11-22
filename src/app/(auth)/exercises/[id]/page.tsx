@@ -47,39 +47,39 @@ export default function ExerciseDetailPage() {
   return (
     <div className="space-y-6 max-w-4xl mx-auto">
       <div className="flex items-center gap-4">
-        <Button variant="ghost" onClick={() => router.back()} className="text-slate-400 hover:text-white">
+        <Button variant="ghost" onClick={() => router.back()} className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white">
           <ArrowLeft className="h-4 w-4 mr-2" />
           Back
         </Button>
-        <h1 className="text-2xl font-bold text-white">{exercise.name}</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-white">{exercise.name}</h1>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <div className="md:col-span-2 space-y-4">
-          <Card>
+          <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
             <CardHeader>
-              <CardTitle className="text-lg">Description</CardTitle>
+              <CardTitle className="text-lg text-slate-900 dark:text-white">Description</CardTitle>
             </CardHeader>
             <CardContent>
-              <p className="text-slate-300">{exercise.description || 'No description provided.'}</p>
+              <p className="text-slate-600 dark:text-slate-300">{exercise.description || 'No description provided.'}</p>
             </CardContent>
           </Card>
 
-          <Card>
+          <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
             <CardHeader>
-              <CardTitle className="text-lg">Instructions</CardTitle>
+              <CardTitle className="text-lg text-slate-900 dark:text-white">Instructions</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="prose prose-invert max-w-none text-slate-300">
+              <div className="prose prose-slate dark:prose-invert max-w-none text-slate-600 dark:text-slate-300">
                 {exercise.instructions || 'No instructions available.'}
               </div>
             </CardContent>
           </Card>
 
           {youtubeId && (
-            <Card>
+            <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
               <CardHeader>
-                <CardTitle className="text-lg">Video</CardTitle>
+                <CardTitle className="text-lg text-slate-900 dark:text-white">Video</CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="aspect-video">
@@ -93,7 +93,7 @@ export default function ExerciseDetailPage() {
                   />
                 </div>
                 {exercise.videoUrl && (
-                  <p className="text-sm text-slate-400 mt-2">Source: <a className="text-emerald-400" href={exercise.videoUrl} target="_blank" rel="noreferrer">{exercise.videoUrl}</a></p>
+                  <p className="text-sm text-slate-500 dark:text-slate-400 mt-2">Source: <a className="text-emerald-600 dark:text-emerald-400 hover:underline" href={exercise.videoUrl} target="_blank" rel="noreferrer">{exercise.videoUrl}</a></p>
                 )}
               </CardContent>
             </Card>
@@ -101,26 +101,26 @@ export default function ExerciseDetailPage() {
         </div>
 
         <div className="space-y-4">
-          <Card>
+          <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
             <CardHeader>
-              <CardTitle className="text-lg">Quick Info</CardTitle>
+              <CardTitle className="text-lg text-slate-900 dark:text-white">Quick Info</CardTitle>
             </CardHeader>
             <CardContent>
-              <dl className="grid grid-cols-1 gap-2 text-sm text-slate-300">
+              <dl className="grid grid-cols-1 gap-2 text-sm text-slate-600 dark:text-slate-300">
                 <div>
-                  <dt className="font-medium">Muscle Group</dt>
+                  <dt className="font-medium text-slate-900 dark:text-white">Muscle Group</dt>
                   <dd>{exercise.muscleGroup || (exercise.muscleGroups || []).join(', ') || '—'}</dd>
                 </div>
                 <div>
-                  <dt className="font-medium">Equipment</dt>
+                  <dt className="font-medium text-slate-900 dark:text-white">Equipment</dt>
                   <dd>{(exercise.equipment || []).length ? (exercise.equipment || []).join(', ') : 'None'}</dd>
                 </div>
                 <div>
-                  <dt className="font-medium">Difficulty</dt>
+                  <dt className="font-medium text-slate-900 dark:text-white">Difficulty</dt>
                   <dd>{exercise.difficulty || 'Unknown'}</dd>
                 </div>
                 <div>
-                  <dt className="font-medium">Tags</dt>
+                  <dt className="font-medium text-slate-900 dark:text-white">Tags</dt>
                   <dd>{(exercise.tags || []).join(', ') || '—'}</dd>
                 </div>
               </dl>
@@ -128,9 +128,9 @@ export default function ExerciseDetailPage() {
           </Card>
 
           {exercise.imageUrl && (
-            <Card>
+            <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
               <CardHeader>
-                <CardTitle className="text-lg">Image</CardTitle>
+                <CardTitle className="text-lg text-slate-900 dark:text-white">Image</CardTitle>
               </CardHeader>
               <CardContent>
                 <img src={exercise.imageUrl} alt={exercise.name} className="w-full rounded" />

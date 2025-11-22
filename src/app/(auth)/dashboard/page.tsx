@@ -46,11 +46,13 @@ export default function DashboardPage() {
   const overviewData = overview?.data || {};
   const statsData = stats?.data || {};
   
-  // Dashboard overview returns: { stats: { total_workouts, total_exercises, completed_routines_this_week }, recent_workouts: [] }
+  // Dashboard overview returns: { stats: { total_workouts, total_exercises, completed_routines_this_week, streak }, recent_workouts: [], today_workout: {} }
   const workoutCount = overviewData.stats?.total_workouts || 0;
   const exerciseCount = overviewData.stats?.total_exercises || 0; // Exercises from completed routines
   const completedRoutinesThisWeek = overviewData.stats?.completed_routines_this_week || 0;
+  const streak = overviewData.stats?.streak || 0;
   const recentWorkouts = overviewData.recent_workouts || [];
+  const todayWorkout = overviewData.today_workout;
   
   // Dashboard stats returns: { total_workouts, total_exercises, total_duration, average_duration }
   // Use completed routines from overview if available, otherwise from stats
@@ -60,8 +62,8 @@ export default function DashboardPage() {
   const weeklyGoal = 4;
   const progressPercent = weeklyGoal > 0 ? Math.min(100, (completedThisWeek / weeklyGoal) * 100) : 0;
 
-  // Get next workout from recent workouts if available
-  const nextWorkout = recentWorkouts.length > 0 ? recentWorkouts[0] : null;
+  // Get next workout from recent workouts if available, or today's workout
+  const nextWorkout = todayWorkout || (recentWorkouts.length > 0 ? recentWorkouts[0] : null);
 
   if (loading) {
     return (
@@ -89,7 +91,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Summary Cards */}
-      <div className="grid md:grid-cols-3 gap-6">
+      <div className="grid md:grid-cols-4 gap-6">
         {/* Total Entrenamientos */}
         <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300 cursor-pointer group">
           <CardContent className="pt-6">
@@ -123,6 +125,21 @@ export default function DashboardPage() {
                 />
                 <p className="text-xs text-emerald-600 dark:text-emerald-400 font-semibold">{Math.round(progressPercent)}% complete</p>
               </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Racha (Streak) */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300 group">
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between mb-4">
+              <div className="p-3 bg-gradient-to-br from-red-500 to-orange-500 rounded-lg group-hover:scale-110 transition-transform duration-300">
+                <Flame className="h-6 w-6 text-white" />
+              </div>
+            </div>
+            <div className="space-y-2">
+              <p className="text-3xl font-bold text-slate-900 dark:text-white">{streak} {t('common.days', { defaultValue: 'days' })}</p>
+              <p className="text-sm text-slate-600 dark:text-slate-400">{t('dashboard.streak', { defaultValue: 'Current Streak' })}</p>
             </div>
           </CardContent>
         </Card>
@@ -192,19 +209,19 @@ export default function DashboardPage() {
             <Target className="h-5 w-5 text-emerald-400" />
             <h2 className="text-xl font-semibold text-white">{t('dashboard.nextWorkout')}</h2>
           </div>
-          <Card className="glass-card border-slate-700 bg-gradient-to-br from-slate-800/90 to-slate-900/90">
+          <Card className="glass-card border-slate-200 dark:border-slate-700 bg-white/80 dark:bg-gradient-to-br dark:from-slate-800/90 dark:to-slate-900/90 shadow-lg">
             <CardContent className="pt-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <p className="text-2xl font-bold text-white mb-2">{nextWorkout.name || t('workouts.today', { defaultValue: 'Workout' })}</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{nextWorkout.name || t('workouts.today', { defaultValue: 'Workout' })}</p>
                   <div className="flex gap-3 mt-4">
                     <Link href={`/workouts/${nextWorkout.id}`}>
-                      <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white">
+                      <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-md">
                         {t('workouts.viewRoutine')}
                       </Button>
                     </Link>
                     <Link href="/workouts">
-                      <Button variant="outline" className="border-slate-600 text-white hover:bg-slate-700">
+                      <Button variant="outline" className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
                         {t('common.view', { defaultValue: 'View' })} All
                       </Button>
                     </Link>

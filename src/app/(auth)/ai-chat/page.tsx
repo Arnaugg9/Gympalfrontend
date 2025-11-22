@@ -3,7 +3,7 @@
 import { useState, useRef, useEffect } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
-import { Send, Dumbbell, Utensils, Calendar, Sparkles, Loader2, User, Plus, MessageSquare, Trash2, Mic, MicOff } from 'lucide-react';
+import { Send, Dumbbell, Utensils, Calendar, Sparkles, Loader2, User, Plus, MessageSquare, Trash2, Mic, MicOff, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
@@ -48,6 +48,7 @@ export default function AIChatPage() {
   // Refs for speech recognition and auto-scrolling
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   /**
    * Initialize Speech Recognition on component mount
@@ -277,6 +278,18 @@ export default function AIChatPage() {
   };
 
   /**
+   * Stop the current generation
+   */
+  const handleStop = () => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+      abortControllerRef.current = null;
+      setIsLoading(false);
+      toast.info('Generation stopped');
+    }
+  };
+
+  /**
    * Send a message to the AI agent
    */
   const handleSend = async () => {
@@ -286,6 +299,10 @@ export default function AIChatPage() {
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
     setInput('');
     setIsLoading(true);
+
+    // Create new AbortController for this request
+    const controller = new AbortController();
+    abortControllerRef.current = controller;
 
     try {
       // If no current conversation, create one first
@@ -297,7 +314,7 @@ export default function AIChatPage() {
          targetConversationId = newConversation.id;
       }
 
-      const response = await aiChatApi.chatWithAgent(userMessage, targetConversationId!);
+      const response = await aiChatApi.chatWithAgent(userMessage, targetConversationId!, controller.signal);
       
       setMessages(prev => [
         ...prev,
@@ -306,18 +323,30 @@ export default function AIChatPage() {
           content: response.data.response,
         },
       ]);
-    } catch (error) {
-      console.error('Chat error:', error);
-      toast.error('Failed to communicate with AI Agent');
-      setMessages(prev => [
-        ...prev,
-        {
-          role: 'assistant',
-          content: "Sorry, I'm having trouble connecting to the agent right now. Please try again later.",
-        },
-      ]);
+    } catch (error: any) {
+      if (error.name === 'AbortError') {
+        // Request was cancelled by user
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: '[Generation stopped by user]',
+          },
+        ]);
+      } else {
+        console.error('Chat error:', error);
+        toast.error('Failed to communicate with AI Agent');
+        setMessages(prev => [
+          ...prev,
+          {
+            role: 'assistant',
+            content: "Sorry, I'm having trouble connecting to the agent right now. Please try again later.",
+          },
+        ]);
+      }
     } finally {
       setIsLoading(false);
+      abortControllerRef.current = null;
     }
   };
 
@@ -539,13 +568,23 @@ export default function AIChatPage() {
                     }
                   }}
                 />
-                <Button
-                  onClick={handleSend}
-                  disabled={!input.trim() || isLoading}
-                  className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white h-10 px-4"
-                >
-                  {isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                </Button>
+                {isLoading ? (
+                  <Button
+                    onClick={handleStop}
+                    className="bg-red-500 hover:bg-red-600 text-white h-10 px-4"
+                    title="Stop generating"
+                  >
+                    <Square className="h-4 w-4 fill-current" />
+                  </Button>
+                ) : (
+                  <Button
+                    onClick={handleSend}
+                    disabled={!input.trim()}
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white h-10 px-4"
+                  >
+                    <Send className="h-4 w-4" />
+                  </Button>
+                )}
               </div>
               <p className="text-slate-500 text-xs mt-2">
                 {t('aiChat.subtitle')}

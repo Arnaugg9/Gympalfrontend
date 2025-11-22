@@ -26,13 +26,13 @@ export default function QuickActionCard({ icon: Icon, title, description, to, co
   const c = colorClasses[color];
   return (
     <Link href={to}>
-      <Card className={`glass-card ${c.border} bg-gradient-to-br from-slate-800/90 to-slate-900/90 hover-lift shadow-lg cursor-pointer overflow-hidden group`}>
+      <Card className={`glass-card ${c.border} bg-white/80 dark:bg-gradient-to-br dark:from-slate-800/90 dark:to-slate-900/90 hover-lift shadow-lg cursor-pointer overflow-hidden group`}>
         <CardContent className="pt-6 relative">
           <div className={`w-14 h-14 rounded-xl ${c.bg} flex items-center justify-center mb-4 shadow-lg group-hover:scale-110 transition-transform duration-300`}>
             <Icon className="h-7 w-7 text-white" />
           </div>
-          <h3 className="text-white mb-1 font-semibold">{title}</h3>
-          <p className="text-slate-400 text-sm">{description}</p>
+          <h3 className="text-slate-900 dark:text-white mb-1 font-semibold">{title}</h3>
+          <p className="text-slate-600 dark:text-slate-400 text-sm">{description}</p>
         </CardContent>
       </Card>
     </Link>

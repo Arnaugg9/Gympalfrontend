@@ -301,14 +301,14 @@ export default function ProfilePage() {
       <div className="space-y-8">
         <div className="flex items-center justify-between">
           <div>
-            <h1 className="text-slate-900 dark:text-white mb-2">Personal Profile</h1>
-            <p className="text-slate-600 dark:text-slate-400">Manage your information and preferences</p>
+            <h1 className="text-slate-900 dark:text-white mb-2">{t('profile.personalProfile')}</h1>
+            <p className="text-slate-600 dark:text-slate-400">{t('profile.subtitle')}</p>
           </div>
           <div className="flex gap-2">
             <Link href="/profile/settings">
               <Button variant="outline" className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300">
                 <Settings className="h-4 w-4 mr-2" />
-                Settings
+                {t('profile.settings.title')}
               </Button>
             </Link>
             <Button
@@ -318,7 +318,7 @@ export default function ProfilePage() {
               disabled={isLoggingOut}
             >
               <LogOut className="h-4 w-4 mr-2" />
-              {isLoggingOut ? 'Logging out...' : 'Log Out'}
+              {isLoggingOut ? t('auth.loggingOut') : t('auth.logout')}
             </Button>
           </div>
         </div>
@@ -355,13 +355,13 @@ export default function ProfilePage() {
                 <div className="flex gap-4 items-center">
                   {memberSince && (
                     <div>
-                      <p className="text-slate-600 dark:text-slate-400 text-sm">Member since</p>
+                      <p className="text-slate-600 dark:text-slate-400 text-sm">{t('profile.memberSince')}</p>
                       <p className="text-slate-900 dark:text-white">{memberSince}</p>
                     </div>
                   )}
                   <Button variant="ghost" size="sm" onClick={handleOpenEditBio} className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10">
                     <Edit className="h-4 w-4 mr-1" />
-                    {bio ? 'Edit Bio' : 'Add Bio'}
+                    {bio ? t('profile.editBio') : t('profile.addBio')}
                   </Button>
                 </div>
               </div>
@@ -376,26 +376,26 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-emerald-500" />
-                  Physical Statistics
+                  {t('profile.physicalStats')}
                 </CardTitle>
                 <Button variant="ghost" size="sm" onClick={handleOpenEditStats} className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10">
                   <Edit className="h-4 w-4 mr-1" />
-                  Edit
+                  {t('common.edit')}
                 </Button>
               </div>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Weight</span>
+                <span className="text-slate-600 dark:text-slate-400">{t('profile.weight')}</span>
                 <span className="text-slate-900 dark:text-white">{personalInfo?.weight_kg ?? '—'} kg</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Height</span>
+                <span className="text-slate-600 dark:text-slate-400">{t('profile.height')}</span>
                 <span className="text-slate-900 dark:text-white">{personalInfo?.height_cm ?? '—'} cm</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Age</span>
-                <span className="text-slate-900 dark:text-white">{personalInfo?.age ?? '—'} years</span>
+                <span className="text-slate-600 dark:text-slate-400">{t('profile.age')}</span>
+                <span className="text-slate-900 dark:text-white">{personalInfo?.age ?? '—'}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600 dark:text-slate-400">BMI</span>
@@ -408,20 +408,20 @@ export default function ProfilePage() {
             <CardHeader>
               <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
                 <Calendar className="h-5 w-5 text-blue-500" />
-                Activity
+                {t('profile.activity')}
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Posts published</span>
+                <span className="text-slate-600 dark:text-slate-400">{t('profile.postsPublished')}</span>
                 <span className="text-slate-900 dark:text-white">{postCount}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Workouts created</span>
+                <span className="text-slate-600 dark:text-slate-400">{t('profile.workoutsCreated')}</span>
                 <span className="text-slate-900 dark:text-white">{workoutCount}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Followers</span>
+                <span className="text-slate-600 dark:text-slate-400">{t('profile.followers')}</span>
                 <span className="text-slate-900 dark:text-white">{followersCount}</span>
               </div>
             </CardContent>
@@ -433,13 +433,13 @@ export default function ProfilePage() {
               <CardHeader>
                 <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
                   <Award className="h-5 w-5 text-yellow-500" />
-                  Level
+                  {t('profile.level')}
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <div>
                   <div className="flex justify-between mb-2">
-                    <span className="text-slate-900 dark:text-white">Level {profile.level}</span>
+                    <span className="text-slate-900 dark:text-white">{t('profile.level')} {profile.level}</span>
                     <span className="text-slate-600 dark:text-slate-400">{profile.xp?.current} / {profile.xp?.next} XP</span>
                   </div>
                   <Progress value={Number(profile.xp?.percent || 0)} className="h-2" />
@@ -455,7 +455,7 @@ export default function ProfilePage() {
             <CardHeader>
               <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
                 <Award className="h-5 w-5 text-yellow-500" />
-                Unlocked Achievements
+                {t('profile.achievements')}
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -478,11 +478,11 @@ export default function ProfilePage() {
             <div className="flex items-center justify-between">
               <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
                 <Dumbbell className="h-5 w-5 text-purple-500" />
-                Fitness Profile
+                {t('profile.fitnessProfile')}
               </CardTitle>
               <Button variant="ghost" size="sm" onClick={handleOpenEditFitness} className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10">
                 <Edit className="h-4 w-4 mr-1" />
-                {fitnessProfile ? 'Edit' : 'Setup'}
+                {fitnessProfile ? t('common.edit') : t('common.setup')}
               </Button>
             </div>
           </CardHeader>
@@ -491,26 +491,26 @@ export default function ProfilePage() {
               <>
                 {fitnessProfile.primary_goal && (
                   <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">Primary Goal</span>
+                    <span className="text-slate-600 dark:text-slate-400">{t('profile.primaryGoal')}</span>
                     <span className="text-slate-900 dark:text-white capitalize">{fitnessProfile.primary_goal}</span>
                   </div>
                 )}
                 {fitnessProfile.experience_level && (
                   <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">Experience Level</span>
-                    <span className="text-slate-900 dark:text-white capitalize">{fitnessProfile.experience_level}</span>
+                    <span className="text-slate-600 dark:text-slate-400">{t('profile.experienceLevel')}</span>
+                    <span className="text-slate-900 dark:text-white capitalize">{t(`workouts.${fitnessProfile.experience_level}` as any) === `workouts.${fitnessProfile.experience_level}` ? fitnessProfile.experience_level : t(`workouts.${fitnessProfile.experience_level}` as any)}</span>
                   </div>
                 )}
                 {fitnessProfile.workout_frequency && (
                   <div className="flex justify-between">
-                    <span className="text-slate-600 dark:text-slate-400">Workout Frequency</span>
-                    <span className="text-slate-900 dark:text-white">{fitnessProfile.workout_frequency} days/week</span>
+                    <span className="text-slate-600 dark:text-slate-400">{t('profile.workoutFrequency')}</span>
+                    <span className="text-slate-900 dark:text-white">{fitnessProfile.workout_frequency} {t('common.days')}/{t('common.week')}</span>
                   </div>
                 )}
               </>
             ) : (
               <p className="text-slate-600 dark:text-slate-400 text-center py-4">
-                Set up your fitness profile to get personalized recommendations
+                {t('profile.setupFitnessProfile')}
               </p>
             )}
           </CardContent>
@@ -521,20 +521,20 @@ export default function ProfilePage() {
       <Dialog open={isEditBioDialogOpen} onOpenChange={setIsEditBioDialogOpen}>
         <DialogContent className="sm:max-w-[500px] bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-white">Edit Bio</DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-white">{t('profile.editBio')}</DialogTitle>
             <DialogDescription className="text-slate-600 dark:text-slate-400">
-              Tell others about yourself
+              {t('profile.bioDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="py-4">
             <Textarea
               value={editedBio}
               onChange={(e) => setEditedBio(e.target.value)}
-              placeholder="Enter your bio..."
+              placeholder={t('profile.bioPlaceholder')}
               className="min-h-[120px] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
               maxLength={500}
             />
-            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{editedBio.length}/500 characters</p>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-2">{editedBio.length}/500 {t('common.characters')}</p>
           </div>
           <DialogFooter>
             <Button
@@ -543,14 +543,14 @@ export default function ProfilePage() {
               disabled={isSavingBio}
               className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300"
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleSaveBio}
               disabled={isSavingBio}
               className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
             >
-              {isSavingBio ? 'Saving...' : 'Save Bio'}
+              {isSavingBio ? t('common.saving') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -560,14 +560,14 @@ export default function ProfilePage() {
       <Dialog open={isEditFitnessDialogOpen} onOpenChange={setIsEditFitnessDialogOpen}>
         <DialogContent className="sm:max-w-[500px] bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-white">Update Fitness Profile</DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-white">{t('profile.updateFitnessProfile')}</DialogTitle>
             <DialogDescription className="text-slate-600 dark:text-slate-400">
-              Set your fitness goals and preferences
+              {t('profile.fitnessProfileDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="primary_goal" className="text-slate-900 dark:text-white">Primary Goal</Label>
+              <Label htmlFor="primary_goal" className="text-slate-900 dark:text-white">{t('profile.primaryGoal')}</Label>
               <Input
                 id="primary_goal"
                 type="text"
@@ -578,21 +578,21 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="experience_level" className="text-slate-900 dark:text-white">Experience Level</Label>
+              <Label htmlFor="experience_level" className="text-slate-900 dark:text-white">{t('profile.experienceLevel')}</Label>
               <select
                 id="experience_level"
                 value={editedFitness.experience_level}
                 onChange={(e) => setEditedFitness({ ...editedFitness, experience_level: e.target.value as any })}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900 border border-slate-300 dark:border-slate-700 rounded-md text-slate-900 dark:text-white"
               >
-                <option value="beginner">Beginner</option>
-                <option value="intermediate">Intermediate</option>
-                <option value="advanced">Advanced</option>
+                <option value="beginner">{t('workouts.beginner')}</option>
+                <option value="intermediate">{t('workouts.intermediate')}</option>
+                <option value="advanced">{t('workouts.advanced')}</option>
                 <option value="expert">Expert</option>
               </select>
             </div>
             <div className="space-y-2">
-              <Label htmlFor="workout_frequency" className="text-slate-900 dark:text-white">Workout Frequency (days/week)</Label>
+              <Label htmlFor="workout_frequency" className="text-slate-900 dark:text-white">{t('profile.workoutFrequency')} ({t('common.days')}/{t('common.week')})</Label>
               <Input
                 id="workout_frequency"
                 type="number"
@@ -612,14 +612,14 @@ export default function ProfilePage() {
               disabled={isSavingFitness}
               className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300"
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
             <Button
               onClick={handleSaveFitness}
               disabled={isSavingFitness}
               className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
             >
-              {isSavingFitness ? 'Saving...' : 'Save Fitness Profile'}
+              {isSavingFitness ? t('common.saving') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -629,15 +629,15 @@ export default function ProfilePage() {
       <Dialog open={isEditStatsDialogOpen} onOpenChange={setIsEditStatsDialogOpen}>
         <DialogContent className="sm:max-w-[425px] bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-white">Update Physical Statistics</DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-white">{t('profile.updatePhysicalStats')}</DialogTitle>
             <DialogDescription className="text-slate-600 dark:text-slate-400">
-              Update your physical data for more accurate tracking
+              {t('profile.physicalStatsDescription')}
             </DialogDescription>
           </DialogHeader>
 
           <div className="space-y-4 py-4">
             <div className="space-y-2">
-              <Label htmlFor="weight" className="text-slate-900 dark:text-white">Weight (kg)</Label>
+              <Label htmlFor="weight" className="text-slate-900 dark:text-white">{t('profile.weight')}</Label>
               <Input
                 id="weight"
                 type="number"
@@ -653,7 +653,7 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="height" className="text-slate-900 dark:text-white">Height (cm)</Label>
+              <Label htmlFor="height" className="text-slate-900 dark:text-white">{t('profile.height')}</Label>
               <Input
                 id="height"
                 type="number"
@@ -668,7 +668,7 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="age" className="text-slate-900 dark:text-white">Age (years)</Label>
+              <Label htmlFor="age" className="text-slate-900 dark:text-white">{t('profile.age')}</Label>
               <Input
                 id="age"
                 type="number"
@@ -684,7 +684,7 @@ export default function ProfilePage() {
             </div>
             {editedStats.weight && editedStats.height && Number(editedStats.weight) > 0 && Number(editedStats.height) > 0 && (
               <div className="p-4 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg border border-emerald-500/30">
-                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">IMC calculado</p>
+                <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('profile.calculatedBMI')}</p>
                 <p className="text-2xl text-slate-900 dark:text-white">{(() => {
                   const w = Number(editedStats.weight);
                   const h = Number(editedStats.height) / 100;

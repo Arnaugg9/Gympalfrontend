@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { settingsApi } from '@/features/settings/api/api';
+import { useAuthStore } from '@/lib/store/auth.store';
 import {
   AlertDialog,
   AlertDialogContent,
@@ -25,6 +26,7 @@ import {
 export default function SettingsPage() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
+  const { user } = useAuthStore();
 
   // General Settings
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto');
@@ -142,8 +144,16 @@ export default function SettingsPage() {
     try {
       setIsDeletingAccount(true);
       setError('');
+      
+      // Get user ID from auth store
+      const userId = user?.id;
+      
+      if (!userId) {
+        throw new Error('User ID not found. Please try logging out and back in.');
+      }
+
       // Call the delete account endpoint
-      await settingsApi.deleteAccount();
+      await settingsApi.deleteAccount(userId);
 
       // Clear localStorage and redirect to login
       localStorage.removeItem('user_name');

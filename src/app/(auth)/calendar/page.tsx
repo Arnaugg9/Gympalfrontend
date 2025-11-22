@@ -362,7 +362,7 @@ export default function CalendarPage() {
         )}
         <Link href="/ai-chat">
           <Button className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-purple-500/50 transition-all">
-            AI: {t('calendar.title')}
+            {t('calendar.aiButton', { title: t('calendar.title') })}
           </Button>
         </Link>
       </div>
@@ -379,7 +379,7 @@ export default function CalendarPage() {
               : 'border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
               }`}
           >
-            {mode}
+            {t(`common.${mode}` as any) === `common.${mode}` ? mode : t(`common.${mode}` as any)}
           </Button>
         ))}
       </div>
@@ -425,27 +425,27 @@ export default function CalendarPage() {
                         <div className="p-4 rounded-lg border border-emerald-500 bg-emerald-500/10">
                           <div className="flex items-start justify-between">
                             <div>
-                              <h4 className="font-semibold text-slate-900 dark:text-white">{entry.workoutName || 'Workout'}</h4>
+                              <h4 className="font-semibold text-slate-900 dark:text-white">{entry.workoutName || t('workouts.workout')}</h4>
                               <p className={`text-sm mt-1 ${entry.status === 'completed' ? 'text-blue-500' : 'text-purple-500'}`}>
-                                Status: {entry.status === 'completed' ? 'Completed' : 'Scheduled'}
+                                {t('common.status')}: {entry.status === 'completed' ? t('calendar.completed') : t('calendar.scheduled')}
                               </p>
                             </div>
                             <button
                               onClick={() => handleDayClick(dateStr, true)}
                               className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded transition-colors"
                             >
-                              View
+                              {t('common.view')}
                             </button>
                           </div>
                         </div>
                       ) : (
                         <div className="p-4 rounded-lg border-2 border-dashed border-slate-300 dark:border-slate-600 text-center">
-                          <p className="text-slate-600 dark:text-slate-400 mb-3">No workouts scheduled</p>
+                          <p className="text-slate-600 dark:text-slate-400 mb-3">{t('calendar.noWorkouts')}</p>
                           <button
                             onClick={() => handleDayClick(dateStr, false)}
                             className="px-4 py-2 bg-emerald-500 hover:bg-emerald-600 text-white rounded transition-colors"
                           >
-                            Add Workout
+                            {t('calendar.addWorkout')}
                           </button>
                         </div>
                       )}
@@ -477,17 +477,17 @@ export default function CalendarPage() {
                         <h4 className="font-semibold text-slate-900 dark:text-white">{dayName}</h4>
                         {entry?.hasWorkout ? (
                           <p className={`text-sm mt-1 ${entry.status === 'completed' ? 'text-blue-500' : 'text-purple-500'}`}>
-                            {entry.workoutName || 'Workout'} ({entry.status === 'completed' ? 'Completed' : 'Scheduled'})
+                            {entry.workoutName || t('workouts.workout')} ({entry.status === 'completed' ? t('calendar.completed') : t('calendar.scheduled')})
                           </p>
                         ) : (
-                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">No workout</p>
+                          <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">{t('workouts.noWorkoutPlanned')}</p>
                         )}
                       </div>
                       <button
                         onClick={() => handleDayClick(dateStr, !!entry?.hasWorkout)}
                         className="px-3 py-1 bg-emerald-500 hover:bg-emerald-600 text-white text-sm rounded transition-colors"
                       >
-                        {entry?.hasWorkout ? 'View' : 'Add'}
+                        {entry?.hasWorkout ? t('common.view') : t('common.add')}
                       </button>
                     </div>
                   );
@@ -527,7 +527,7 @@ export default function CalendarPage() {
                     <div className="text-slate-900 dark:text-white text-sm mb-1">{day}</div>
                     {entry?.hasWorkout ? (
                       <div className={`text-xs ${entry.status === 'completed' ? 'text-blue-500' : 'text-purple-500'}`}>
-                        {entry.workoutName || 'Workout'}
+                        {entry.workoutName || t('workouts.workout')}
                       </div>
                     ) : (
                       <div className="flex items-center justify-center mt-1">
@@ -561,7 +561,7 @@ export default function CalendarPage() {
                     </h4>
                     <div className="space-y-2">
                       <p className="text-sm text-slate-600 dark:text-slate-400">
-                        {workoutsInMonth.length} workout{plural}
+                        {workoutsInMonth.length} {t('workouts.workouts')}
                       </p>
                       <div className="h-2 bg-slate-200 dark:bg-slate-700 rounded-full overflow-hidden">
                         <div
@@ -593,19 +593,19 @@ export default function CalendarPage() {
           <div className="flex flex-wrap gap-4">
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded border-2 border-emerald-500 bg-emerald-500/10" />
-              <span className="text-slate-700 dark:text-slate-300 text-sm">Today</span>
+              <span className="text-slate-700 dark:text-slate-300 text-sm">{t('calendar.today')}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded border-2 border-blue-500 bg-blue-500/10" />
-              <span className="text-slate-700 dark:text-slate-300 text-sm">Completed</span>
+              <span className="text-slate-700 dark:text-slate-300 text-sm">{t('calendar.completed')}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded border-2 border-purple-500 bg-purple-500/10" />
-              <span className="text-slate-700 dark:text-slate-300 text-sm">Scheduled</span>
+              <span className="text-slate-700 dark:text-slate-300 text-sm">{t('calendar.scheduled')}</span>
             </div>
             <div className="flex items-center gap-2">
               <div className="w-4 h-4 rounded border-2 border-slate-300 dark:border-slate-700" />
-              <span className="text-slate-700 dark:text-slate-300 text-sm">Empty</span>
+              <span className="text-slate-700 dark:text-slate-300 text-sm">{t('calendar.empty')}</span>
             </div>
           </div>
         </CardContent>
@@ -615,13 +615,14 @@ export default function CalendarPage() {
       <Dialog open={isAddWorkoutDialogOpen} onOpenChange={setIsAddWorkoutDialogOpen}>
         <DialogContent className="sm:max-w-[500px] bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-white">Add Workout</DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-white">{t('calendar.addWorkoutTitle')}</DialogTitle>
             <DialogDescription className="text-slate-600 dark:text-slate-400">
-              Select a routine to add on{' '}
-              {selectedDate && new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
-                day: 'numeric',
-                month: 'long',
-                year: 'numeric'
+              {t('calendar.addWorkoutDescription', {
+                date: selectedDate && new Date(selectedDate + 'T00:00:00').toLocaleDateString('en-US', {
+                  day: 'numeric',
+                  month: 'long',
+                  year: 'numeric'
+                })
               })}
             </DialogDescription>
           </DialogHeader>
@@ -667,8 +668,8 @@ export default function CalendarPage() {
                       <Plus className="h-5 w-5 text-emerald-500" />
                     </div>
                     <div>
-                      <h4 className="text-slate-900 dark:text-white">New Routine</h4>
-                      <p className="text-sm text-slate-600 dark:text-slate-400">Create a custom routine</p>
+                      <h4 className="text-slate-900 dark:text-white">{t('workouts.createNew')}</h4>
+                      <p className="text-sm text-slate-600 dark:text-slate-400">{t('workouts.createNewDescription')}</p>
                     </div>
                   </div>
                 </div>
@@ -685,7 +686,7 @@ export default function CalendarPage() {
               }}
               className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
             >
-              Cancel
+              {t('common.cancel')}
             </Button>
           </DialogFooter>
         </DialogContent>
@@ -733,10 +734,10 @@ export default function CalendarPage() {
                       {isCompleted ? (
                         <>
                           <Check className="h-3 w-3 mr-1" />
-                          Completed
+                          {t('calendar.completed')}
                         </>
                       ) : (
-                        'Scheduled'
+                        t('calendar.scheduled')
                       )}
                     </Badge>
                   </div>
@@ -748,9 +749,9 @@ export default function CalendarPage() {
                   <div className="p-4 rounded-lg bg-gradient-to-r from-emerald-500/10 to-emerald-600/10 dark:from-emerald-500/20 dark:to-emerald-600/20 border border-emerald-500/20">
                     <div className="flex items-start justify-between">
                       <div className="flex-1">
-                        <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-1">Workout Details</h4>
+                        <h4 className="text-sm font-medium text-slate-900 dark:text-white mb-1">{t('calendar.workoutDetails')}</h4>
                         <p className="text-sm text-slate-600 dark:text-slate-400">
-                          View full workout routine with exercises, sets, and reps
+                          {t('calendar.viewFullWorkout')}
                         </p>
                       </div>
                       <Button
@@ -758,7 +759,7 @@ export default function CalendarPage() {
                         className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-lg hover:shadow-emerald-500/50 transition-all"
                         size="sm"
                       >
-                        Open
+                        {t('calendar.open')}
                       </Button>
                     </div>
                   </div>
@@ -768,14 +769,14 @@ export default function CalendarPage() {
                     <div className="p-4 rounded-lg bg-blue-500/10 dark:bg-blue-500/20 border border-blue-500/20">
                       <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400">
                         <Check className="h-5 w-5" />
-                        <p className="text-sm font-medium">Great job! You've completed this workout. 🎉</p>
+                        <p className="text-sm font-medium">{t('calendar.completionMessage')}</p>
                       </div>
                     </div>
                   ) : (
                     <div className="p-4 rounded-lg bg-purple-500/10 dark:bg-purple-500/20 border border-purple-500/20">
                       <div className="flex items-center gap-2 text-purple-700 dark:text-purple-400">
                         <CalendarIcon className="h-5 w-5" />
-                        <p className="text-sm font-medium">Ready for your workout? Mark it as complete when you're done!</p>
+                        <p className="text-sm font-medium">{t('calendar.readyMessage')}</p>
                       </div>
                     </div>
                   )}
@@ -790,7 +791,7 @@ export default function CalendarPage() {
                       className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
                     >
                       <X className="h-4 w-4 mr-2" />
-                      Delete Workout
+                      {t('workouts.confirmDelete')}
                     </Button>
                     <div className="flex gap-2">
                       <Button
@@ -798,7 +799,7 @@ export default function CalendarPage() {
                         onClick={() => handleCloseWorkoutDialog(false)}
                         className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300"
                       >
-                        Close
+                        {t('common.close')}
                       </Button>
                       {!isCompleted && (
                         <Button
@@ -806,7 +807,7 @@ export default function CalendarPage() {
                           className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-emerald-500/50 transition-all"
                         >
                           <Check className="h-4 w-4 mr-2" />
-                          Mark as Complete
+                          {t('calendar.markComplete')}
                         </Button>
                       )}
                     </div>

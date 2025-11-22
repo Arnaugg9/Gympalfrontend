@@ -344,7 +344,7 @@ export default function SocialPage() {
       setImageUrl('');
       setPublishModalOpen(false);
     } catch (err: any) {
-      const msg = err?.response?.data?.error?.message || err?.message || 'Error al publicar';
+      const msg = err?.response?.data?.error?.message || err?.message || t('errors.error');
       setPublishError(msg);
     } finally {
       setLoading(false);
@@ -362,7 +362,7 @@ export default function SocialPage() {
     const newFiles = files.filter((file) => file.type.startsWith('image/'));
 
     if (newFiles.length !== files.length) {
-      setErrorDialog({ open: true, message: 'Only image files are allowed' });
+      setErrorDialog({ open: true, message: t('social.imageTypeError') });
     }
 
     newFiles.forEach((file) => {
@@ -519,7 +519,7 @@ export default function SocialPage() {
       }
     } catch (err: any) {
       const msg = err?.message || 'Error posting comment';
-      setErrorDialog({ open: true, message: typeof msg === 'string' ? msg : 'Error posting comment' });
+      setErrorDialog({ open: true, message: typeof msg === 'string' ? msg : t('social.replyError') });
     } finally {
       setLoading(false);
     }
@@ -567,7 +567,7 @@ export default function SocialPage() {
       }
     } catch (err: any) {
       const msg = err?.message || 'Error posting reply';
-      setErrorDialog({ open: true, message: typeof msg === 'string' ? msg : 'Error posting reply' });
+      setErrorDialog({ open: true, message: typeof msg === 'string' ? msg : t('social.replyError') });
     } finally {
       setLoading(false);
     }
@@ -621,12 +621,12 @@ export default function SocialPage() {
 
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-slate-900 dark:text-white mb-2">Social Feed</h1>
-          <p className="text-slate-600 dark:text-slate-400">Connect with the GymPal community</p>
+          <h1 className="text-slate-900 dark:text-white mb-2">{t('nav.social')}</h1>
+          <p className="text-slate-600 dark:text-slate-400">{t('social.subtitle')}</p>
         </div>
         <Button onClick={() => setPublishModalOpen(true)} className="bg-emerald-500 hover:bg-emerald-600 text-white">
           <Plus className="h-4 w-4 mr-2" />
-          New Post
+          {t('social.newPost')}
         </Button>
       </div>
 
@@ -634,7 +634,7 @@ export default function SocialPage() {
       <div className="relative">
         <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
         <Input
-          placeholder="Search posts..."
+          placeholder={t('social.searchPlaceholder')}
           value={searchQuery}
           onChange={(e) => setSearchQuery(e.target.value)}
           className="pl-10 bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
@@ -653,7 +653,7 @@ export default function SocialPage() {
                   <div className="flex items-center gap-2 text-sm text-slate-500 dark:text-slate-400 mb-2">
                     <Repeat2 className="h-4 w-4 text-emerald-500" />
                     <span className="font-medium text-slate-700 dark:text-slate-300">
-                      {item.repostedBy?.id === currentUserId ? 'You' : item.repostedBy?.username || 'Someone'} reposted
+                      {t('social.repostedBy', { user: item.repostedBy?.id === currentUserId ? t('social.you') : item.repostedBy?.username || t('social.someone') })}
                     </span>
                   </div>
                   <div className="flex items-start justify-between">
@@ -703,7 +703,7 @@ export default function SocialPage() {
                   {(post.workout || post.workout_id) && (
                     <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded">
                       <div className="flex items-center justify-between mb-1">
-                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">📋 Referenced Workout</p>
+                        <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{t('social.referencedWorkout')}</p>
                         {post.workout?.difficulty && (
                           <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 capitalize">
                             {post.workout.difficulty}
@@ -725,7 +725,7 @@ export default function SocialPage() {
                         size="sm"
                         className="mt-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 h-auto py-1 px-2 text-xs"
                       >
-                        📋 Copy This Workout
+                        {t('social.copyWorkout')}
                       </Button>
                     </div>
                   )}
@@ -956,7 +956,7 @@ export default function SocialPage() {
                       className={followed[post.author.id] ? 'text-emerald-500' : 'text-slate-600 dark:text-slate-400'}
                     >
                       <UserPlus className="h-4 w-4 mr-2" />
-                      {followed[post.author.id] ? 'Following' : 'Follow'}
+                      {followed[post.author.id] ? t('social.following') : t('social.follow')}
                     </Button>
                   )}
                   {currentUserId && post.userId === currentUserId && (
@@ -997,7 +997,7 @@ export default function SocialPage() {
               {(post.workout || post.workout_id) && (
                 <div className="mb-4 p-3 bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 rounded">
                   <div className="flex items-center justify-between mb-1">
-                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">📋 Referenced Workout</p>
+                    <p className="text-xs font-medium text-emerald-700 dark:text-emerald-400">{t('social.referencedWorkout')}</p>
                     {post.workout?.difficulty && (
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 capitalize">
                         {post.workout.difficulty}
@@ -1019,7 +1019,7 @@ export default function SocialPage() {
                     size="sm"
                     className="mt-2 text-emerald-600 dark:text-emerald-400 hover:bg-emerald-100 dark:hover:bg-emerald-900/30 h-auto py-1 px-2 text-xs"
                   >
-                    📋 Copy This Workout
+                    {t('social.copyWorkout')}
                   </Button>
                 </div>
               )}
@@ -1040,7 +1040,7 @@ export default function SocialPage() {
                   className="text-slate-600 dark:text-slate-400"
                   onClick={() => handleLoadComments(post.id)}
                 >
-                  {post.commentsCount ?? 0} comments
+                  {post.commentsCount ?? 0} {t('social.comment')}s
                 </Button>
                 <Button
                   variant="ghost"
@@ -1224,14 +1224,14 @@ export default function SocialPage() {
       <Dialog open={publishModalOpen} onOpenChange={setPublishModalOpen}>
         <DialogContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-white">Create Post</DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-white">{t('social.createPost')}</DialogTitle>
             <DialogDescription className="text-slate-600 dark:text-slate-400">
-              Share your progress with the community
+              {t('social.createPostDescription')}
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <Textarea
-              placeholder="What do you want to share?"
+              placeholder={t('social.postPlaceholder')}
               className="min-h-[200px] bg-white dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
               value={postContent}
               onChange={(e) => {
@@ -1247,7 +1247,7 @@ export default function SocialPage() {
 
             {/* Image Upload Input */}
             <div className="space-y-2">
-              <label className="text-sm font-medium text-slate-900 dark:text-white">Add Images</label>
+              <label className="text-sm font-medium text-slate-900 dark:text-white">{t('social.addImages')}</label>
               <div className="space-y-2">
                 {/* File Upload */}
                 <div className="flex gap-2">
@@ -1260,7 +1260,7 @@ export default function SocialPage() {
                       className="hidden"
                     />
                     <span className="text-sm text-slate-600 dark:text-slate-400">
-                      Click to upload images from your computer
+                      {t('social.uploadImageHint')}
                     </span>
                   </label>
                 </div>
@@ -1268,7 +1268,7 @@ export default function SocialPage() {
                 {/* URL Input (Alternative) */}
                 <div className="flex gap-2">
                   <Input
-                    placeholder="Or paste image URL..."
+                    placeholder={t('social.imageUrlPlaceholder')}
                     value={imageUrl}
                     onChange={(e) => setImageUrl(e.target.value)}
                     className="bg-white dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
@@ -1314,14 +1314,14 @@ export default function SocialPage() {
 
             {/* Workout Reference */}
             <div className="space-y-2">
-              <label htmlFor="workout-select" className="text-sm font-medium text-slate-900 dark:text-white">Reference Workout (optional)</label>
+              <label htmlFor="workout-select" className="text-sm font-medium text-slate-900 dark:text-white">{t('social.referenceWorkout')}</label>
               <select
                 id="workout-select"
                 value={selectedWorkoutId || ''}
                 onChange={(e) => setSelectedWorkoutId(e.target.value || null)}
                 className="w-full px-3 py-2 bg-white dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded text-slate-900 dark:text-white text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500"
               >
-                <option value="">-- No workout --</option>
+                <option value="">-- {t('common.no')} workout --</option>
                 {(Array.isArray(userWorkouts) ? userWorkouts : []).map((workout: any) => (
                   <option key={workout.id} value={workout.id}>
                     {workout.name} ({workout.difficulty || 'N/A'})
@@ -1336,7 +1336,7 @@ export default function SocialPage() {
                 className="bg-emerald-500 hover:bg-emerald-600 text-white flex-1"
                 disabled={!postContent.trim() || loading}
               >
-                {loading ? 'Posting…' : 'Post'}
+                {loading ? t('social.posting') : t('social.post')}
               </Button>
             </div>
           </div>

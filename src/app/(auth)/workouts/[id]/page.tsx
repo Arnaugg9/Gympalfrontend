@@ -124,13 +124,13 @@ export default function WorkoutDetailPage() {
                     <span className="text-orange-500">{index + 1}</span>
                   </div>
                   <div>
-                    <h3 className="text-white mb-1">{exercise.name}</h3>
+                    <h3 className="text-white mb-1">{exercise.exercise?.name || exercise.name}</h3>
                     <p className="text-slate-400 text-sm">
                       {exercise.sets ?? '-'} series × {exercise.reps ?? '-'} reps
                     </p>
                   </div>
                 </div>
-                <Link href={`/exercises/${exercise.id || ''}`}>
+                <Link href={`/exercises/${exercise.exercise?.id || exercise.id || ''}`}>
                   <Button variant="ghost" className="text-slate-400 hover:text-white">
                     Ver Detalles
                   </Button>

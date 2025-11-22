@@ -67,7 +67,11 @@ function joinUrl(path: string) {
   return `${baseUrl}${path.startsWith('/') ? path : `/${path}`}`;
 }
 
-async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
+interface CustomRequestInit extends RequestInit {
+  timeout?: number;
+}
+
+async function request<T>(path: string, options: CustomRequestInit = {}): Promise<T> {
   const url = joinUrl(path);
   let token = getAccessToken();
   // Don't set Content-Type for FormData - browser will set it with correct boundary
@@ -78,9 +82,14 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
   };
 
   // Default timeout of 120 seconds (2 minutes) to handle slow AI responses
-  const timeout = 120000;
+  // If timeout is 0, disable timeout
+  const timeout = options.timeout !== undefined ? options.timeout : 120000;
   const controller = new AbortController();
-  const id = setTimeout(() => controller.abort(), timeout);
+  let id: NodeJS.Timeout | undefined;
+  
+  if (timeout > 0) {
+    id = setTimeout(() => controller.abort(), timeout);
+  }
   
   const method = (options.method || 'GET') as HttpMethod;
   const startedAt = Date.now();
@@ -93,7 +102,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
       credentials: 'include',
       signal: options.signal || controller.signal 
     });
-    clearTimeout(id);
+    if (id) clearTimeout(id);
 
     if (res.status === 401) {
       const newToken = await refreshAccessToken();
@@ -101,7 +110,10 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
         apiLogger.debug({ path, url }, 'Retrying request with refreshed token');
         // Create new controller for retry
         const retryController = new AbortController();
-        const retryId = setTimeout(() => retryController.abort(), timeout);
+        let retryId: NodeJS.Timeout | undefined;
+        if (timeout > 0) {
+          retryId = setTimeout(() => retryController.abort(), timeout);
+        }
         try {
           res = await fetch(url, { 
             ...options, 
@@ -110,7 +122,7 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
             signal: options.signal || retryController.signal
           });
         } finally {
-          clearTimeout(retryId);
+          if (retryId) clearTimeout(retryId);
         }
       } else {
         clearTokens();
@@ -137,27 +149,27 @@ async function request<T>(path: string, options: RequestInit = {}): Promise<T> {
     if (contentType.includes('application/json')) return (await res.json()) as T;
     return (await res.text()) as unknown as T;
   } catch (err) {
-    clearTimeout(id);
+    if (id) clearTimeout(id);
     throw err;
   }
 }
 
 export const http = {
-  get: <T>(path: string, init?: RequestInit) => request<T>(path, { ...init, method: 'GET' }),
-  post: <T>(path: string, body?: unknown, init?: RequestInit) => {
+  get: <T>(path: string, init?: CustomRequestInit) => request<T>(path, { ...init, method: 'GET' }),
+  post: <T>(path: string, body?: unknown, init?: CustomRequestInit) => {
     // If body is FormData, don't JSON.stringify it - send it as-is
     const finalBody = body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined);
     return request<T>(path, { ...init, method: 'POST', body: finalBody });
   },
-  put: <T>(path: string, body?: unknown, init?: RequestInit) => {
+  put: <T>(path: string, body?: unknown, init?: CustomRequestInit) => {
     const finalBody = body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined);
     return request<T>(path, { ...init, method: 'PUT', body: finalBody });
   },
-  patch: <T>(path: string, body?: unknown, init?: RequestInit) => {
+  patch: <T>(path: string, body?: unknown, init?: CustomRequestInit) => {
     const finalBody = body instanceof FormData ? body : (body ? JSON.stringify(body) : undefined);
     return request<T>(path, { ...init, method: 'PATCH', body: finalBody });
   },
-  delete: <T>(path: string, init?: RequestInit) => request<T>(path, { ...init, method: 'DELETE' }),
+  delete: <T>(path: string, init?: CustomRequestInit) => request<T>(path, { ...init, method: 'DELETE' }),
 };
 
 
