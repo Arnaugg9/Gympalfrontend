@@ -22,10 +22,11 @@ export default function ProgressPage() {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<any>(null);
-  const [stats, setStats] = useState<any>(null);
+  const [statsAll, setStatsAll] = useState<any>(null);
   const [weightData, setWeightData] = useState<any>(null);
   const [statsWeek, setStatsWeek] = useState<any>(null);
   const [statsMonth, setStatsMonth] = useState<any>(null);
+  const [statsYear, setStatsYear] = useState<any>(null);
 
   /**
    * Fetch all progress data on mount
@@ -36,21 +37,23 @@ export default function ProgressPage() {
     (async () => {
       try {
         // Fetch data from various endpoints
-        const [ov, st, weight, weekStats, monthStats] = await Promise.all([
+        const [ov, stAll, weight, weekStats, monthStats, yearStats] = await Promise.all([
           getDashboard().catch(() => null),
-          getDashboardStats('month').catch(() => null),
+          getDashboardStats('all').catch(() => null),
           http.get<any>('/api/v1/personal/info').catch(() => null),
           getDashboardStats('week').catch(() => null),
           getDashboardStats('month').catch(() => null),
+          getDashboardStats('year').catch(() => null),
         ]);
         
         if (!mounted) return;
         
         setOverview(ov);
-        setStats(st);
+        setStatsAll(stAll);
         setWeightData(weight);
         setStatsWeek(weekStats);
         setStatsMonth(monthStats);
+        setStatsYear(yearStats);
       } catch (err) {
         // Error handling logic here
       } finally {
@@ -60,15 +63,17 @@ export default function ProgressPage() {
     return () => { mounted = false; };
   }, []);
 
-  const statsData = stats?.data || {};
+  const statsAllData = statsAll?.data || {};
   const weekStatsData = statsWeek?.data || {};
   const monthStatsData = statsMonth?.data || {};
+  const yearStatsData = statsYear?.data || {};
   const weightDataResponse = weightData?.data || {};
   
   // Dashboard stats returns: { total_workouts, total_exercises, total_duration, average_duration }
-  const workoutCount = statsData.total_workouts || 0;
+  const workoutCount = statsAllData.total_workouts || 0;
   const workoutsThisMonth = monthStatsData.total_workouts || 0;
   const workoutsThisWeek = weekStatsData.total_workouts || 0;
+  const workoutsThisYear = yearStatsData.total_workouts || 0;
   
   // Personal info returns: { weight_kg, height_cm, age, ... }
   const currentWeight = weightDataResponse.weight_kg || null;
@@ -147,6 +152,20 @@ export default function ProgressPage() {
             <CardContent>
               <p className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{workoutsThisWeek}</p>
               <p className="text-sm text-blue-600 dark:text-blue-400">{t('progress.workouts')}</p>
+            </CardContent>
+        </Card>
+
+        {/* This Year */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300">
+            <CardHeader className="pb-2">
+              <div className="flex items-center justify-between">
+                <CardTitle className="text-sm text-slate-600 dark:text-slate-400">{t('progress.thisYear', { defaultValue: 'This Year' })}</CardTitle>
+                <Calendar className="h-4 w-4 text-purple-500 dark:text-purple-400" />
+              </div>
+            </CardHeader>
+            <CardContent>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{workoutsThisYear}</p>
+              <p className="text-sm text-purple-600 dark:text-purple-400">{t('progress.workouts')}</p>
             </CardContent>
         </Card>
       </div>

@@ -39,10 +39,10 @@ export async function getDashboard() {
  * Get dashboard statistics with optional timeframe
  */
 export async function getDashboardStats(timeframe: 'week' | 'month' | 'year' | 'all' = 'all', includeSocial: boolean = true) {
-  apiLogger.info({ endpoint: '/api/v1/dashboard/stats', timeframe, includeSocial }, 'Get dashboard stats request');
+  apiLogger.info({ endpoint: '/api/v1/dashboard/stats', period: timeframe, includeSocial }, 'Get dashboard stats request');
   try {
     const params = new URLSearchParams({
-      timeframe,
+      period: timeframe,
       include_social: includeSocial.toString(),
     });
     const wrappedRes = await http.get<ApiResponse<Unified.DashboardStats>>(`/api/v1/dashboard/stats?${params}`);
