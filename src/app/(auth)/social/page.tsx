@@ -62,6 +62,7 @@ export default function SocialPage() {
   const [searchQuery, setSearchQuery] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [currentUser, setCurrentUser] = useState<any>(null);
   const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
   const [deletePostDialog, setDeletePostDialog] = useState<{ open: boolean; postId: string | null }>({ open: false, postId: null });
   const [deleteCommentDialog, setDeleteCommentDialog] = useState<{ open: boolean; postId: string | null; commentId: string | null }>({ open: false, postId: null, commentId: null });
@@ -85,6 +86,7 @@ export default function SocialPage() {
         const user = res?.data?.user || res?.data || res?.user || res;
         if (mounted && user?.id) {
           setCurrentUserId(user.id);
+          setCurrentUser(user);
         }
       } catch (err) {
       }
@@ -123,14 +125,36 @@ export default function SocialPage() {
           // Initialize liked and followed states
           const likedState: Record<string, boolean> = {};
           const followedState: Record<string, boolean> = {};
+
+          // Collect unique author IDs to check follow status
+          const authorIds = new Set<string>();
+
           items.forEach((post: Post) => {
             if (post.isLiked) likedState[post.id] = true;
-            if (post.author?.id && currentUserId) {
-              // You might want to check follow status from API
+            if (post.author?.id && currentUserId && post.author.id !== currentUserId) {
+              authorIds.add(post.author.id);
             }
           });
+
           setLiked(likedState);
-          setFollowed(followedState);
+
+          // Check follow status for each author
+          if (currentUserId) {
+            await Promise.all(Array.from(authorIds).map(async (authorId) => {
+              try {
+                const stats = await socialApi.getFollowStats(authorId);
+                if (stats.isFollowing) {
+                  followedState[authorId] = true;
+                }
+              } catch (e) {
+                // ignore
+              }
+            }));
+          }
+
+          if (mounted) {
+            setFollowed(followedState);
+          }
         }
       } catch (err) {
       }
@@ -155,6 +179,7 @@ export default function SocialPage() {
     try {
       // Check if we have file uploads
       const hasFileUploads = imageFiles.length > 0;
+      let newPost: Post;
 
       if (hasFileUploads) {
         // Use FormData for file uploads
@@ -172,8 +197,7 @@ export default function SocialPage() {
 
         // Call API with FormData (don't set Content-Type header - browser will set it with correct boundary)
         const res = await http.post<Post>('/api/v1/social/posts', formData);
-        const newPost = (res as any)?.data || res;
-        setPosts((prev) => [newPost, ...prev]);
+        newPost = (res as any)?.data || res;
       } else {
         // Use regular JSON for URL-only images
         const res = await socialApi.createPost({
@@ -182,9 +206,21 @@ export default function SocialPage() {
           workout_id: selectedWorkoutId || undefined,
           is_public: true,
         });
-        const newPost = res as Post;
-        setPosts((prev) => [newPost, ...prev]);
+        newPost = res as Post;
       }
+
+      // Add current user info to the new post for immediate display
+      if (currentUser) {
+        newPost.author = {
+          id: currentUser.id,
+          username: currentUser.username,
+          fullName: currentUser.full_name || currentUser.fullName,
+          email: currentUser.email,
+          avatar: currentUser.avatar_url || currentUser.avatar
+        };
+      }
+
+      setPosts((prev) => [newPost, ...prev]);
 
       setPostContent('');
       setPostImages([]);
@@ -496,7 +532,7 @@ export default function SocialPage() {
                   </Avatar>
                   <div>
                     <h3 className="text-slate-900 dark:text-white font-medium">
-                      {post.author?.fullName || post.author?.username || 'Usuario'}
+                      {post.author?.username || post.author?.fullName || 'Usuario'}
                     </h3>
                     {post.createdAt && (
                       <p className="text-sm text-slate-500 dark:text-slate-400">
@@ -518,9 +554,9 @@ export default function SocialPage() {
                     </Button>
                   )}
                   {currentUserId && post.userId === currentUserId && (
-                    <Button 
-                      variant="ghost" 
-                      size="sm" 
+                    <Button
+                      variant="ghost"
+                      size="sm"
                       onClick={() => setDeletePostDialog({ open: true, postId: post.id })}
                       className="text-red-500 hover:text-red-600 hover:bg-red-500/10"
                     >
@@ -568,9 +604,9 @@ export default function SocialPage() {
               )}
 
               <div className="flex items-center gap-4">
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={() => handleLike(post.id)}
                   className={liked[post.id] || post.isLiked ? 'text-pink-500' : 'text-slate-600 dark:text-slate-400 hover:text-pink-500'}
                 >
@@ -609,7 +645,7 @@ export default function SocialPage() {
                       <div className="flex-1">
                         <div className="flex items-center gap-2 mb-1">
                           <span className="text-sm font-medium text-slate-900 dark:text-white">
-                            {comment.author?.fullName || comment.author?.username || 'Usuario'}
+                            {comment.author?.username || comment.author?.fullName || 'Usuario'}
                           </span>
                           <div className="flex items-center gap-1 ml-auto">
                             <Button
@@ -692,7 +728,7 @@ export default function SocialPage() {
                                 <div className="flex-1">
                                   <div className="flex items-center gap-2 mb-1">
                                     <span className="text-xs font-medium text-slate-900 dark:text-white">
-                                      {reply.author?.fullName || reply.author?.username || 'Usuario'}
+                                      {reply.author?.username || reply.author?.fullName || 'Usuario'}
                                     </span>
                                     {currentUserId && (reply.userId === currentUserId || post.userId === currentUserId) && (
                                       <Button

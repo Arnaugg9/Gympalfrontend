@@ -3,6 +3,8 @@ import { endpoints } from '@/lib/api/endpoints';
 import type { UserProfile, UpdateProfileRequest } from '../types';
 import { apiLogger, logError } from '@/lib/logger';
 import type { ApiResponse } from '@/features/auth/types';
+import { socialApi } from '@/features/social/api/api';
+import { workoutsApi } from '@/features/workouts/api/api';
 
 /**
  * Personal info data interface
@@ -38,9 +40,11 @@ export interface ActivityStats {
   totalWorkouts?: number;
   totalExercises?: number;
   totalPosts?: number;
+  followers?: number;
   workout_count?: number;
   exercise_count?: number;
   post_count?: number;
+  followers_count?: number;
 }
 
 export const profileApi = {
@@ -71,12 +75,21 @@ export const profileApi = {
     http.get<{ data: UserProfile }>(`/api/v1/users/${userId}`),
 
   // Upload avatar
-  uploadAvatar: (formData: FormData) =>
-    http.post<{ data: { avatarUrl: string } }>(
-      '/api/v1/users/avatar',
-      formData,
-      { headers: { 'Content-Type': 'multipart/form-data' } }
-    ),
+  uploadAvatar: async (formData: FormData) => {
+    const endpoint = '/api/v1/users/avatar';
+    apiLogger.info({ endpoint }, 'Uploading avatar');
+    try {
+      // Don't set Content-Type header - let browser set it with boundary
+      const response = await http.post<ApiResponse<UserProfile>>(endpoint, formData);
+      apiLogger.info('Avatar uploaded successfully');
+      return response?.data || response;
+    } catch (err) {
+      logError(err as Error, { endpoint });
+      throw err;
+    }
+  },
+
+
 
   // Personal info methods
   updatePersonalInfo: async (data: PersonalInfoData) => {
@@ -136,24 +149,49 @@ export const profileApi = {
   getActivityStats: async (userId?: string): Promise<ActivityStats> => {
     const endpoint = userId ? `/api/v1/users/${userId}/stats` : '/api/v1/users/stats';
     apiLogger.info({ endpoint }, 'Fetching activity stats');
+
+    let followStats = { followersCount: 0, followingCount: 0, isFollowing: false };
+    let postCount = 0;
+    let workoutCount = 0;
+
+    // Try to get stats if we have a userId
+    if (userId) {
+      try {
+        const [followRes, postRes, workoutRes] = await Promise.all([
+          socialApi.getFollowStats(userId).catch(() => null),
+          socialApi.getPostCount(userId).catch(() => 0),
+          workoutsApi.getWorkoutCount(userId).catch(() => 0)
+        ]);
+
+        if (followRes) {
+          followStats = followRes;
+        }
+        postCount = postRes || 0;
+        workoutCount = workoutRes || 0;
+      } catch (e) {
+        // Ignore error
+      }
+    }
+
     try {
       const response = await http.get<ApiResponse<ActivityStats>>(endpoint);
       apiLogger.info('Activity stats retrieved successfully');
       const data = response?.data || response;
       // Ensure we return the correct shape
       return {
-        totalWorkouts: (data as any)?.workout_count || (data as any)?.totalWorkouts || 0,
+        totalWorkouts: workoutCount || (data as any)?.workout_count || (data as any)?.totalWorkouts || 0,
         totalExercises: (data as any)?.exercise_count || (data as any)?.totalExercises || 0,
-        totalPosts: (data as any)?.post_count || (data as any)?.totalPosts || 0,
+        totalPosts: postCount || (data as any)?.post_count || (data as any)?.totalPosts || 0,
+        followers: followStats.followersCount || (data as any)?.followers_count || (data as any)?.followers || 0,
       };
     } catch (err) {
       logError(err as Error, { endpoint });
       return {
-        totalWorkouts: 0,
+        totalWorkouts: workoutCount || 0,
         totalExercises: 0,
-        totalPosts: 0,
+        totalPosts: postCount || 0,
+        followers: followStats.followersCount || 0,
       };
     }
   },
 };
-

@@ -1,60 +1,31 @@
-import { createBrowserClient } from '@supabase/ssr';
+// Dummy Supabase client to satisfy imports without actual dependency
+// The user wants to move DB management to the backend
 
-/**
- * Create a Supabase client for use in the browser
- * This client can be used in components for real-time subscriptions and authentication
- */
-export const supabase = createBrowserClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
-);
+export const supabase = {
+  auth: {
+    getSession: async () => ({ data: { session: null } }),
+    getUser: async () => ({ data: { user: null } }),
+    signOut: async () => { },
+    setSession: async () => { },
+  },
+};
 
-/**
- * Get the current user's session
- */
 export async function getSession() {
-  const {
-    data: { session },
-  } = await supabase.auth.getSession();
-  return session;
+  return null;
 }
 
-/**
- * Get the current authenticated user
- */
 export async function getUser() {
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
-  return user;
+  return null;
 }
 
-/**
- * Sign out the current user
- */
 export async function signOut() {
-  await supabase.auth.signOut();
+  // No-op
 }
 
-/**
- * Set auth tokens on the Supabase client (browser)
- * This will set the session for the client so server requests via Supabase
- * use the correct Authorization header for RLS-protected requests.
- */
 export async function setAuthTokens(accessToken: string | null, refreshToken?: string | null) {
-  if (!accessToken) return;
-  try {
-    // supabase.auth.setSession accepts an object with access_token and refresh_token
-    // use a cast here to satisfy the TS signature in environments with differing lib types
-    await supabase.auth.setSession({ access_token: accessToken, refresh_token: (refreshToken ?? undefined) as any } as any);
-  } catch (err) {
-    // best-effort, don't throw in UI
-  }
+  // No-op
 }
 
 export async function clearAuthTokens() {
-  try {
-    await supabase.auth.signOut();
-  } catch (err) {
-  }
+  // No-op
 }

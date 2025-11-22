@@ -236,6 +236,40 @@ export async function togglePostRepost(postId: string) {
 }
 
 /**
+ * Get follow stats for a user
+ */
+export async function getFollowStats(userId: string) {
+  apiLogger.info({ endpoint: `/api/v1/social/users/${userId}/stats` }, 'Get follow stats request');
+  try {
+    const wrappedRes = await http.get<ApiResponse<{ followersCount: number; followingCount: number; isFollowing: boolean }>>(`/api/v1/social/users/${userId}/stats`);
+    const data = wrappedRes?.data;
+    if (!data) throw new Error('No stats in response');
+    apiLogger.info({}, 'Get follow stats success');
+    return data;
+  } catch (err) {
+    logError(err as Error, { endpoint: `/api/v1/social/users/${userId}/stats` });
+    throw err;
+  }
+}
+
+/**
+ * Get post count for a user
+ */
+export async function getPostCount(userId: string) {
+  apiLogger.info({ endpoint: `/api/v1/social/users/${userId}/posts/count` }, 'Get post count request');
+  try {
+    const wrappedRes = await http.get<ApiResponse<{ count: number }>>(`/api/v1/social/users/${userId}/posts/count`);
+    const data = wrappedRes?.data;
+    if (data === undefined) throw new Error('No count in response');
+    apiLogger.info({}, 'Get post count success');
+    return data.count;
+  } catch (err) {
+    logError(err as Error, { endpoint: `/api/v1/social/users/${userId}/posts/count` });
+    throw err;
+  }
+}
+
+/**
  * Social API object for convenience
  */
 export const socialApi = {
@@ -251,4 +285,6 @@ export const socialApi = {
   deleteComment: deletePostComment,
   follow: followUser,
   unfollow: unfollowUser,
+  getFollowStats: getFollowStats,
+  getPostCount: getPostCount,
 };

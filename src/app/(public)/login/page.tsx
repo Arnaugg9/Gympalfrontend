@@ -29,6 +29,13 @@ export default function LoginPage() {
         if (token || cookieToken) {
           router.replace('/dashboard');
           router.refresh();
+        } else {
+          // Ensure clean slate if not authenticated
+          // This fixes issues where stale tokens might prevent correct navigation
+          localStorage.removeItem('access_token');
+          localStorage.removeItem('refresh_token');
+          document.cookie = 'access_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
+          document.cookie = 'refresh_token=; Path=/; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax';
         }
       } catch (err) {
         // If token check fails, stay on login page

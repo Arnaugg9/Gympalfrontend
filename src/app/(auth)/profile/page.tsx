@@ -52,6 +52,7 @@ export default function ProfilePage() {
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [isSavingFitness, setIsSavingFitness] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
+  const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
 
   const handleLogout = async () => {
@@ -163,7 +164,7 @@ export default function ProfilePage() {
 
         // Get activity stats
         try {
-          const stats = await profileApi.getActivityStats();
+          const stats = await profileApi.getActivityStats(userId || undefined);
           if (mounted) setActivityStats(stats);
         } catch { }
       } catch (err) {
@@ -178,8 +179,8 @@ export default function ProfilePage() {
   const bio = profile?.bio || '';
   const memberSince = profile?.createdAt ? new Date(profile.createdAt).toLocaleDateString('es-ES', { year: 'numeric', month: 'long' }) : '';
   const workoutCount = activityStats?.totalWorkouts || profile?.stats?.totalWorkouts || 0;
-  const exerciseCount = activityStats?.totalExercises || profile?.stats?.totalExercises || 0;
   const postCount = activityStats?.totalPosts || profile?.stats?.totalPosts || 0;
+  const followersCount = activityStats?.followers || profile?.stats?.followers || 0;
 
   const bmi = useMemo(() => {
     const w = Number(personalInfo?.weight_kg ?? editedStats.weight);
@@ -254,6 +255,25 @@ export default function ProfilePage() {
     setIsEditFitnessDialogOpen(true);
   };
 
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (isUploadingAvatar) return;
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    try {
+      setIsUploadingAvatar(true);
+      const formData = new FormData();
+      formData.append('avatar', file);
+      const updatedProfile = await profileApi.uploadAvatar(formData);
+      setProfile(updatedProfile);
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.error?.message || err?.message || 'Failed to upload avatar';
+      setErrorDialog({ open: true, message: errorMessage });
+    } finally {
+      setIsUploadingAvatar(false);
+    }
+  };
+
   const handleSaveFitness = async () => {
     if (isSavingFitness) return;
     try {
@@ -274,6 +294,7 @@ export default function ProfilePage() {
       setIsSavingFitness(false);
     }
   };
+
 
   return (
     <Fragment>
@@ -306,12 +327,25 @@ export default function ProfilePage() {
         <Card className="bg-gradient-to-r from-slate-50 to-slate-100 dark:from-slate-800/50 dark:to-slate-700/50 border-slate-200 dark:border-slate-700">
           <CardContent className="pt-6">
             <div className="flex items-center gap-6">
-              <Avatar className="w-24 h-24">
-                <AvatarImage src={avatar || undefined} />
-                <AvatarFallback className="bg-emerald-500 text-white text-2xl">
-                  {name.charAt(0)}
-                </AvatarFallback>
-              </Avatar>
+              <div className="relative">
+                <Avatar className="w-24 h-24">
+                  <AvatarImage src={avatar || undefined} />
+                  <AvatarFallback className="bg-emerald-500 text-white text-2xl">
+                    {name.charAt(0)}
+                  </AvatarFallback>
+                </Avatar>
+                <label htmlFor="avatar-upload" className="absolute bottom-0 right-0 bg-emerald-500 hover:bg-emerald-600 text-white rounded-full p-2 cursor-pointer shadow-lg">
+                  <Edit className="h-4 w-4" />
+                  <input
+                    id="avatar-upload"
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={handleAvatarUpload}
+                    disabled={isUploadingAvatar}
+                  />
+                </label>
+              </div>
               <div className="flex-1">
                 <h2 className="text-slate-900 dark:text-white text-2xl mb-1">{name}</h2>
                 <p className="text-slate-600 dark:text-slate-400 mb-2">{email}</p>
@@ -379,16 +413,16 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Total workouts</span>
+                <span className="text-slate-600 dark:text-slate-400">Posts published</span>
+                <span className="text-slate-900 dark:text-white">{postCount}</span>
+              </div>
+              <div className="flex justify-between">
+                <span className="text-slate-600 dark:text-slate-400">Workouts created</span>
                 <span className="text-slate-900 dark:text-white">{workoutCount}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Total exercises</span>
-                <span className="text-slate-900 dark:text-white">{exerciseCount}</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">Total posts</span>
-                <span className="text-slate-900 dark:text-white">{postCount}</span>
+                <span className="text-slate-600 dark:text-slate-400">Followers</span>
+                <span className="text-slate-900 dark:text-white">{followersCount}</span>
               </div>
             </CardContent>
           </Card>
