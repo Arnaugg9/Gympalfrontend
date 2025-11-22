@@ -27,15 +27,25 @@ export default function LanguageToggle() {
         localStorage.setItem('language', langCode);
       }
 
-      // Update language preference in backend
+      // Update language preference in backend (only if user is authenticated)
       try {
-        await settingsApi.updateSettings({ language: langCode });
+        // Check if user is authenticated by checking for auth token
+        const hasAuth = typeof window !== 'undefined' && 
+          (localStorage.getItem('gp_access_token') || 
+           document.cookie.includes('gp_access_token') ||
+           document.cookie.includes('access_token'));
+        
+        if (hasAuth) {
+          await settingsApi.updateSettings({ language: langCode });
+        }
       } catch (err) {
         // Still change the language locally even if backend update fails
       }
 
       setIsOpen(false);
     } catch (err) {
+      // Still change the language locally even if there's an error
+      setIsOpen(false);
     }
   };
 

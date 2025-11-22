@@ -60,6 +60,7 @@ const resources = {
         title: 'Workouts',
         subtitle: 'Manage your workout routines',
         today: "Today's Workout",
+        workout: 'Workout',
         noWorkoutPlanned: 'No workout planned for today',
         noWorkoutDescription: 'Add a routine for today and start training',
         addWorkout: 'Add Workout',
@@ -360,6 +361,7 @@ const resources = {
         title: 'Rutinas',
         subtitle: 'Gestiona tus rutinas de entrenamiento',
         today: 'Entreno de Hoy',
+        workout: 'Entrenamiento',
         noWorkoutPlanned: 'No hay entrenamiento planificado para hoy',
         noWorkoutDescription: 'Añade una rutina para el día de hoy y comienza a entrenar',
         addWorkout: 'Añadir Entrenamiento',
@@ -646,6 +648,7 @@ const resources = {
       },
       workouts: {
         today: 'Entrenament d\'Avui',
+        workout: 'Entrenament',
         noWorkoutPlanned: 'No hi ha entrenament planificat per avui',
         noWorkoutDescription: 'Afegeix una rutina per avui i comença a entrenar',
         addWorkout: 'Afegir Entrenament',
@@ -928,6 +931,7 @@ const resources = {
       },
       workouts: {
         today: 'Entraînement du jour',
+        workout: 'Entraînement',
         noWorkoutPlanned: 'Aucun entraînement prévu pour aujourd\'hui',
         noWorkoutDescription: 'Ajoutez une routine pour aujourd\'hui et commencez à vous entraîner',
         addWorkout: 'Ajouter un Entraînement',

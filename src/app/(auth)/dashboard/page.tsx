@@ -46,13 +46,15 @@ export default function DashboardPage() {
   const overviewData = overview?.data || {};
   const statsData = stats?.data || {};
   
-  // Dashboard overview returns: { stats: { total_workouts, total_exercises }, recent_workouts: [] }
+  // Dashboard overview returns: { stats: { total_workouts, total_exercises, completed_routines_this_week }, recent_workouts: [] }
   const workoutCount = overviewData.stats?.total_workouts || 0;
-  const exerciseCount = overviewData.stats?.total_exercises || 0;
+  const exerciseCount = overviewData.stats?.total_exercises || 0; // Exercises from completed routines
+  const completedRoutinesThisWeek = overviewData.stats?.completed_routines_this_week || 0;
   const recentWorkouts = overviewData.recent_workouts || [];
   
   // Dashboard stats returns: { total_workouts, total_exercises, total_duration, average_duration }
-  const completedThisWeek = statsData.total_workouts || 0;
+  // Use completed routines from overview if available, otherwise from stats
+  const completedThisWeek = completedRoutinesThisWeek || statsData.total_workouts || 0;
   
   // Calculate weekly goal from workout frequency or default to 4
   const weeklyGoal = 4;
