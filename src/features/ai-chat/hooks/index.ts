@@ -11,7 +11,7 @@ export const useStartConversation = () => {
 export const useConversation = (conversationId: string) => {
   return useQuery({
     queryKey: ['ai-chat', conversationId],
-    queryFn: () => aiChatApi.getConversation(conversationId),
+    queryFn: () => aiChatApi.getConversationMessages(conversationId),
     enabled: !!conversationId,
   });
 };
@@ -26,7 +26,7 @@ export const useConversations = () => {
 export const useSendMessage = (conversationId: string) => {
   const queryClient = useQueryClient();
   return useMutation({
-    mutationFn: (data: SendMessageRequest) => aiChatApi.sendMessage(conversationId, data),
+    mutationFn: (data: SendMessageRequest) => aiChatApi.chatWithAgent(data.content, conversationId),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['ai-chat', conversationId] });
     },
@@ -43,12 +43,3 @@ export const useDeleteConversation = () => {
   });
 };
 
-export const useClearHistory = () => {
-  const queryClient = useQueryClient();
-  return useMutation({
-    mutationFn: () => aiChatApi.clearHistory(),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['ai-chat-conversations'] });
-    },
-  });
-};

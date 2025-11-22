@@ -11,21 +11,21 @@ export const aiChatApi = {
 
   // Get conversation messages (history)
   getConversationMessages: (conversationId: string) =>
-    http.get<{ messages: any[] }>(`${baseUrl}/history?conversationId=${conversationId}`),
+    http.get<{ data: { messages: any[] } }>(`${baseUrl}/history?conversationId=${conversationId}`),
 
   // Get all conversations
   getConversations: () =>
-    http.get<{ conversations: any[] }>(`${baseUrl}/conversations`),
+    http.get<{ data: { conversations: any[] } }>(`${baseUrl}/conversations`),
 
   // Delete conversation
   deleteConversation: (conversationId: string) =>
-    http.delete<{ success: boolean }>(`${baseUrl}/conversations/${conversationId}`),
+    http.delete<{ data: { success: boolean } }>(`${baseUrl}/conversations/${conversationId}`),
 
   // Send message to Reception Agent
   chatWithAgent: (text: string, conversationId?: string) =>
-    http.post<{ response: string }>(`${baseUrl}/agent`, { text, conversationId }),
+    http.post<{ data: { response: string } }>(`${baseUrl}/agent`, { text, conversationId }),
 
   // Get latest chat history (legacy)
   getHistory: () =>
-    http.get<{ messages: any[] }>(`${baseUrl}/history`),
+    http.get<{ data: { messages: any[] } }>(`${baseUrl}/history`),
 };

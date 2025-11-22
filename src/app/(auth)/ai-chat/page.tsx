@@ -114,13 +114,19 @@ export default function AIChatPage() {
     const loadInitialData = async () => {
       setIsInitialLoading(true);
       try {
-        const [{ data: profile }, { data: conversationsData }] = await Promise.all([
-          profileApi.getProfile(),
-          aiChatApi.getConversations().catch(() => ({ data: { conversations: [] } }))
-        ]);
+        // Resolve promises independently to handle errors gracefully and better typing
+        const profileResponse = await profileApi.getProfile();
+        const conversationsResponse = await aiChatApi.getConversations().catch(() => ({ data: { conversations: [] } }));
 
-        if (profile?.avatar_url) {
-          setUserAvatar(profile.avatar_url);
+        const profile = profileResponse.data;
+        // Handle case where getConversations might return { data: { conversations: [] } } or { conversations: [] }
+        // Now strictly typed to return { data: { conversations: any[] } }
+        const conversationsData = conversationsResponse.data;
+
+        if (profile && (profile as any).avatar_url) {
+          setUserAvatar((profile as any).avatar_url);
+        } else if (profile?.avatarUrl) {
+          setUserAvatar(profile.avatarUrl);
         }
 
         const fetchedConversations = conversationsData?.conversations || [];
@@ -160,6 +166,7 @@ export default function AIChatPage() {
     try {
       const response = await aiChatApi.getConversationMessages(conversationId);
       const history = response.data.messages || [];
+      
       if (history.length > 0) {
         setMessages(history.map((msg: any) => ({
           role: msg.role,
