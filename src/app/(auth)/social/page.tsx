@@ -24,7 +24,11 @@ import { http } from '@/lib/http';
 import { socialApi } from '@/features/social/api/api';
 import { useTranslation } from 'react-i18next';
 import { MessageCircle } from 'lucide-react';
+import { ImageViewer } from '@/components/shared/ImageViewer';
 
+/**
+ * Post Interface representing a social feed item
+ */
 type Post = {
   id: string;
   content: string;
@@ -77,7 +81,11 @@ export default function SocialPage() {
   const [imageUrl, setImageUrl] = useState('');
   const [userWorkouts, setUserWorkouts] = useState<any[]>([]);
   const [imageFiles, setImageFiles] = useState<File[]>([]);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
 
+  /**
+   * Initialize user data on mount
+   */
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -577,7 +585,8 @@ export default function SocialPage() {
                       key={idx}
                       src={url}
                       alt={`Post image ${idx + 1}`}
-                      className="max-h-64 max-w-full rounded border border-slate-300 dark:border-slate-700"
+                      onClick={() => setPreviewImage(url)}
+                      className="max-h-64 max-w-full rounded border border-slate-300 dark:border-slate-700 cursor-pointer hover:opacity-90 transition-opacity"
                       onError={(e) => {
                         (e.target as HTMLImageElement).style.display = 'none';
                       }}
@@ -977,6 +986,12 @@ export default function SocialPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      {/* Image Preview Viewer */}
+      <ImageViewer
+        src={previewImage}
+        isOpen={!!previewImage}
+        onClose={() => setPreviewImage(null)}
+      />
     </div>
   );
 }

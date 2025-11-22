@@ -10,6 +10,16 @@ import { Calendar, Plus, Check, Flame, Activity } from 'lucide-react';
 import { http } from '@/lib/http';
 import { getDashboardStats } from '@/features/dashboard/api/api';
 
+/**
+ * TodayWorkoutPage Component
+ * 
+ * Displays the scheduled workout for the current day.
+ * Features:
+ * - Shows today's scheduled routine details
+ * - Quick actions (Start, View Calendar, Add Workout)
+ * - Activity summary (Week, Month, Streak)
+ * - Handles refresh via query params
+ */
 export default function TodayWorkoutPage() {
   const { t } = useTranslation();
   const searchParams = useSearchParams();
@@ -20,15 +30,19 @@ export default function TodayWorkoutPage() {
   const [streak, setStreak] = useState<number>(0);
   const [refreshKey, setRefreshKey] = useState(0);
 
-  // Trigger refresh when returning from select page
+  // Trigger refresh when returning from select page or other actions
   useEffect(() => {
     const refresh = searchParams.get('refresh');
     if (refresh) {
       setRefreshKey(prev => prev + 1);
+      // Clean up URL
       window.history.replaceState({}, '', '/workouts/today');
     }
   }, [searchParams]);
 
+  /**
+   * Fetch today's workout and user stats on mount/refresh
+   */
   useEffect(() => {
     let mounted = true;
     const today = new Date();
@@ -47,9 +61,10 @@ export default function TodayWorkoutPage() {
 
         if (!mounted) return;
 
-        // Find today's workout from calendar
+        // Find today's workout from calendar response
         const calendarData = calendarRes?.days || calendarRes?.data?.days || [];
         const todayEntry = calendarData.find((d: any) => d.date === dateStr);
+        
         if (todayEntry?.workout) {
           setTodayWorkout(todayEntry.workout);
         } else {
@@ -59,10 +74,12 @@ export default function TodayWorkoutPage() {
         setWeekStats(weekStatsRes || {});
         setMonthStats(monthStatsRes || {});
 
-        // Streak calculation - would need backend endpoint for accurate streak
+        // Simple Streak calculation based on weekly activity
+        // (Ideally should come from backend)
         const workoutsThisWeek = weekStatsRes?.total_workouts || 0;
         setStreak(workoutsThisWeek > 0 ? 7 : 0);
       } catch (err) {
+        // Error handling
       } finally {
         if (mounted) setLoading(false);
       }
@@ -72,7 +89,7 @@ export default function TodayWorkoutPage() {
   }, [refreshKey]);
 
   const today = new Date();
-  // Use i18n for date formatting - default to English
+  // Format current date
   const dateStr = today.toLocaleDateString('en-US', { 
     weekday: 'long', 
     year: 'numeric', 
@@ -81,7 +98,6 @@ export default function TodayWorkoutPage() {
   });
   const formattedDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
 
-  // Dashboard stats returns: { total_workouts, total_exercises, total_duration, average_duration }
   const workoutsThisWeek = weekStats?.total_workouts || 0;
   const workoutsThisMonth = monthStats?.total_workouts || 0;
 
@@ -213,4 +229,3 @@ export default function TodayWorkoutPage() {
     </div>
   );
 }
-

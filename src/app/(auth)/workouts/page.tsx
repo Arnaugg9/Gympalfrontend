@@ -19,6 +19,17 @@ import {
 import { workoutsApi } from '@/features/workouts/api/api';
 import { useTranslation } from 'react-i18next';
 
+/**
+ * WorkoutsPage Component
+ * 
+ * Displays the user's workout library.
+ * Features:
+ * - List of all created workouts (grid layout)
+ * - Button to create new workout
+ * - Delete functionality with confirmation
+ * - Quick access to AI chat
+ * - Pagination (Load More)
+ */
 export default function WorkoutsPage() {
   const { t } = useTranslation();
   const [visibleRoutines, setVisibleRoutines] = useState(6);
@@ -26,6 +37,7 @@ export default function WorkoutsPage() {
   const [routines, setRoutines] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Load workouts on mount
   useEffect(() => {
     let mounted = true;
     (async () => {
@@ -33,6 +45,7 @@ export default function WorkoutsPage() {
         setLoading(true);
         const list = await workoutsApi.list();
         if (!mounted) return;
+        // Normalize response to array
         const items = Array.isArray(list?.data) ? list.data : Array.isArray(list) ? list : [];
         setRoutines(items);
       } catch {
@@ -71,6 +84,7 @@ export default function WorkoutsPage() {
 
   return (
     <div className="space-y-8">
+      {/* Header */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{t('workouts.title')}</h1>
@@ -202,5 +216,3 @@ export default function WorkoutsPage() {
     </div>
   );
 }
-
-

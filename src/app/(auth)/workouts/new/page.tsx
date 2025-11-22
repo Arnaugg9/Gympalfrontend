@@ -14,9 +14,21 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { workoutsApi } from '@/features/workouts/api/api';
 
+/**
+ * WorkoutCreatePage Component
+ * 
+ * Form for creating a new workout routine.
+ * Features:
+ * - Basic info (Name, Description, Difficulty)
+ * - Advanced settings (Type, Frequency, Notes)
+ * - Exercise selection (persisted via localStorage to survive navigation)
+ * - Form validation and submission
+ */
 export default function WorkoutCreatePage() {
   const { t } = useTranslation();
   const router = useRouter();
+  
+  // Form State
   const [workoutName, setWorkoutName] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<any[]>([]);
   const [difficulty, setDifficulty] = useState('');
@@ -28,11 +40,13 @@ export default function WorkoutCreatePage() {
   const [userNotes, setUserNotes] = useState('');
   
   const [isInitialized, setIsInitialized] = useState(false);
-
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string>('');
 
-  // Load form data from localStorage when component mounts (only once)
+  /**
+   * Load form data from localStorage on mount.
+   * This allows users to navigate to the exercise selector and back without losing data.
+   */
   useEffect(() => {
     try {
       // Load exercises
@@ -44,19 +58,13 @@ export default function WorkoutCreatePage() {
 
       // Load form fields
       const storedRoutineName = localStorage.getItem('workoutFormName');
-      if (storedRoutineName) {
-        setWorkoutName(storedRoutineName);
-      }
+      if (storedRoutineName) setWorkoutName(storedRoutineName);
 
       const storedDescription = localStorage.getItem('workoutFormDescription');
-      if (storedDescription) {
-        setDescription(storedDescription);
-      }
+      if (storedDescription) setDescription(storedDescription);
 
       const storedDifficulty = localStorage.getItem('workoutFormDifficulty');
-      if (storedDifficulty) {
-        setDifficulty(storedDifficulty);
-      }
+      if (storedDifficulty) setDifficulty(storedDifficulty);
 
       // Load new fields
       const storedType = localStorage.getItem('workoutFormType');
@@ -74,17 +82,14 @@ export default function WorkoutCreatePage() {
     }
   }, []);
 
-  // Save form data to localStorage whenever it changes (but only after initialization)
+  // --- Persistence Effects: Save form data to localStorage on change ---
+
   useEffect(() => {
-    if (isInitialized) {
-      localStorage.setItem('workoutFormName', workoutName);
-    }
+    if (isInitialized) localStorage.setItem('workoutFormName', workoutName);
   }, [workoutName, isInitialized]);
 
   useEffect(() => {
-    if (isInitialized) {
-      localStorage.setItem('workoutFormDescription', description);
-    }
+    if (isInitialized) localStorage.setItem('workoutFormDescription', description);
   }, [description, isInitialized]);
 
   useEffect(() => {
@@ -102,6 +107,10 @@ export default function WorkoutCreatePage() {
     }
   }, [selectedExercises, isInitialized]);
 
+  /**
+   * Handle form submission
+   * Validates input and calls API to create workout
+   */
   const handleSubmit = async () => {
     if (!workoutName.trim()) {
       setError('Workout name is required');
@@ -116,7 +125,6 @@ export default function WorkoutCreatePage() {
     setError('');
     try {
       // Format exercises according to backend expectations
-      // Exercises should have: exercise_id, sets, reps, weight (optional)
       const exercises = selectedExercises.map((ex) => {
         // Try multiple possible ID fields
         const exerciseId = ex.id || ex.exercise_id || ex.uuid || ex._id;
@@ -154,10 +162,10 @@ export default function WorkoutCreatePage() {
       if (daysPerWeek) payload.days_per_week = parseInt(daysPerWeek);
       if (userNotes) payload.user_notes = userNotes;
 
-      const result = await workoutsApi.create(payload);
+      await workoutsApi.create(payload);
 
       // Show success and redirect
-      setError(''); // Clear error
+      setError('');
 
       // Clear localStorage data after successful creation
       localStorage.removeItem('workoutFormName');
@@ -203,6 +211,7 @@ export default function WorkoutCreatePage() {
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
+        {/* Main Form Area */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader>
@@ -305,6 +314,7 @@ export default function WorkoutCreatePage() {
             </CardContent>
           </Card>
 
+          {/* Exercises Section */}
           <Card className="bg-slate-800/50 border-slate-700">
             <CardHeader>
               <CardTitle className="text-white flex items-center justify-between">
@@ -353,6 +363,7 @@ export default function WorkoutCreatePage() {
           </Card>
         </div>
 
+        {/* Sidebar / Summary */}
         <div>
           <Card className="bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border-emerald-500/50 sticky top-4">
             <CardHeader>

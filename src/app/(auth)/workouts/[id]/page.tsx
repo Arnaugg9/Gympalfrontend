@@ -9,28 +9,49 @@ import { useEffect, useState } from 'react';
 import { workoutsApi } from '@/features/workouts/api/api';
 import { exercisesApi } from '@/features/exercises/api/api';
 
+/**
+ * WorkoutDetailPage Component
+ * 
+ * Displays detailed information about a specific workout routine.
+ * Features:
+ * - Workout title and description
+ * - List of exercises with sets/reps
+ * - Action buttons (Start, Edit, Delete)
+ * - Workout summary statistics (Total sets, estimated duration)
+ */
 export default function WorkoutDetailPage() {
   const router = useRouter();
   const params = useParams<{ id: string }>();
   const [workout, setWorkout] = useState<any>(null);
 
+  /**
+   * Fetch workout details on mount
+   * Handles fetching additional exercise data if not fully populated
+   */
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
         const data = await workoutsApi.get(params.id);
         if (!mounted) return;
+        
         // If workout exercises were returned only as ids or without nested exercise objects,
         // fetch exercise details for each missing exercise to display names/details.
         const exercises = data?.exercises || [];
-        const needFetch = exercises.filter((e: any) => !e.exercise || !e.exercise.name).map((e: any) => e.exerciseId || e.exerciseId || e.exercise_id || e.exercise?.id || e.id);
+        const needFetch = exercises
+          .filter((e: any) => !e.exercise || !e.exercise.name)
+          .map((e: any) => e.exerciseId || e.exerciseId || e.exercise_id || e.exercise?.id || e.id);
 
         if (needFetch.length > 0) {
           try {
+            // Deduplicate IDs to fetch
             const uniqueIds = Array.from(new Set(needFetch.filter(Boolean)));
             const fetched = await Promise.all(uniqueIds.map((id) => exercisesApi.get(String(id)).catch(() => null)));
+            
+            // Map fetched exercises by ID
             const fetchedById: Record<string, any> = {};
             fetched.forEach((f) => { if (f?.id) fetchedById[f.id] = f; });
+            
             // Merge fetched exercise objects back into workout exercises
             data.exercises = exercises.map((ex: any) => {
               const exId = ex.exerciseId || ex.exercise_id || ex.exercise?.id || ex.id;
@@ -59,6 +80,7 @@ export default function WorkoutDetailPage() {
 
   return (
     <div className="space-y-8">
+      {/* Header & Actions */}
       <div className="flex items-center gap-4">
         <Button
           variant="ghost"
@@ -119,7 +141,7 @@ export default function WorkoutDetailPage() {
         ))}
       </div>
 
-      {/* Summary */}
+      {/* Summary Statistics */}
       <Card className="bg-gradient-to-r from-orange-500/20 to-red-500/20 border-orange-500/50">
         <CardHeader>
           <CardTitle className="text-white">Resumen del Entrenamiento</CardTitle>
@@ -146,5 +168,3 @@ export default function WorkoutDetailPage() {
     </div>
   );
 }
-
-

@@ -15,19 +15,43 @@ import { toast } from 'sonner';
 import { profileApi } from '@/features/profile/api/profile.api';
 import { format } from 'date-fns';
 
+/**
+ * AIChatPage Component
+ * 
+ * Provides an interface for interacting with AI agents.
+ * Features:
+ * - Real-time chat interface
+ * - Conversation management (create, delete, switch)
+ * - Voice input (speech-to-text)
+ * - Integration with specialized agents (Reception, Data, Routine)
+ * - Quick action suggestions
+ */
 export default function AIChatPage() {
   const { t } = useTranslation();
+  // State for chat messages
   const [messages, setMessages] = useState<{role: string, content: string}[]>([]);
+  // State for list of conversations
   const [conversations, setConversations] = useState<any[]>([]);
+  // Currently active conversation ID
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
+  // Current input text
   const [input, setInput] = useState('');
+  // Loading state for sending messages
   const [isLoading, setIsLoading] = useState(false);
+  // Loading state for initial data fetch
   const [isInitialLoading, setIsInitialLoading] = useState(true);
+  // User's avatar URL
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
+  // Recording state
   const [isRecording, setIsRecording] = useState(false);
+  
+  // Refs for speech recognition and auto-scrolling
   const recognitionRef = useRef<any>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
+  /**
+   * Initialize Speech Recognition on component mount
+   */
   useEffect(() => {
     if (typeof window !== 'undefined' && (window as any).webkitSpeechRecognition) {
       const SpeechRecognition = (window as any).webkitSpeechRecognition;
@@ -37,14 +61,11 @@ export default function AIChatPage() {
       recognitionRef.current.lang = 'es-ES'; // Default to Spanish as per context
 
       recognitionRef.current.onresult = (event: any) => {
-        let interimTranscript = '';
         let finalTranscript = '';
 
         for (let i = event.resultIndex; i < event.results.length; ++i) {
           if (event.results[i].isFinal) {
             finalTranscript += event.results[i][0].transcript;
-          } else {
-            interimTranscript += event.results[i][0].transcript;
           }
         }
         
@@ -78,6 +99,10 @@ export default function AIChatPage() {
     }
   }, []);
 
+  /**
+   * Toggle voice recording state
+   * Handles permission requests and start/stop logic
+   */
   const toggleRecording = async () => {
     if (!recognitionRef.current) {
       toast.error('Speech recognition not supported in this browser.');
@@ -110,22 +135,22 @@ export default function AIChatPage() {
     }
   };
 
+  /**
+   * Load initial data (profile, conversations) on mount
+   */
   useEffect(() => {
     const loadInitialData = async () => {
       setIsInitialLoading(true);
       try {
         // Resolve promises independently to handle errors gracefully and better typing
         const profileResponse = await profileApi.getProfile();
-        const conversationsResponse = await aiChatApi.getConversations().catch(() => ({ data: { conversations: [] } }));
+        const conversationsResponse = await aiChatApi.getConversations().catch(() => ({ data: { conversations: [] } } as any));
 
         const profile = profileResponse.data;
-        // Handle case where getConversations might return { data: { conversations: [] } } or { conversations: [] }
-        // Now strictly typed to return { data: { conversations: any[] } }
-        const conversationsData = conversationsResponse.data;
+        // Handle potential data wrapper inconsistencies safely
+        const conversationsData = (conversationsResponse as any).data || conversationsResponse;
 
-        if (profile && (profile as any).avatar_url) {
-          setUserAvatar((profile as any).avatar_url);
-        } else if (profile?.avatarUrl) {
+        if (profile?.avatarUrl) {
           setUserAvatar(profile.avatarUrl);
         }
 
@@ -161,6 +186,10 @@ export default function AIChatPage() {
     loadInitialData();
   }, [t]);
 
+  /**
+   * Load messages for a specific conversation
+   * @param conversationId - The ID of the conversation to load
+   */
   const loadMessages = async (conversationId: string) => {
     setIsLoading(true);
     try {
@@ -183,6 +212,9 @@ export default function AIChatPage() {
     }
   };
 
+  /**
+   * Scroll chat view to bottom
+   */
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
@@ -191,6 +223,9 @@ export default function AIChatPage() {
     scrollToBottom();
   }, [messages]);
 
+  /**
+   * Create a new empty conversation
+   */
   const handleCreateNewChat = async () => {
     try {
       const { data: newConversation } = await aiChatApi.startConversation('New Chat');
@@ -203,6 +238,11 @@ export default function AIChatPage() {
     }
   };
 
+  /**
+   * Delete a conversation
+   * @param e - Click event
+   * @param conversationId - ID of conversation to delete
+   */
   const handleDeleteChat = async (e: React.MouseEvent, conversationId: string) => {
     e.stopPropagation();
     try {
@@ -226,12 +266,19 @@ export default function AIChatPage() {
     }
   };
 
+  /**
+   * Select a conversation from the sidebar
+   * @param conversationId - ID of conversation to select
+   */
   const handleSelectConversation = (conversationId: string) => {
     if (conversationId === currentConversationId) return;
     setCurrentConversationId(conversationId);
     loadMessages(conversationId);
   };
 
+  /**
+   * Send a message to the AI agent
+   */
   const handleSend = async () => {
     if (!input.trim() || isLoading) return;
 

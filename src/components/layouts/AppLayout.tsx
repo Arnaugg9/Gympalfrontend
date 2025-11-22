@@ -9,10 +9,28 @@ import ThemeToggle from './ThemeToggle';
 import LanguageToggle from './LanguageToggle';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
+/**
+ * Props for AppLayout
+ * @interface AppLayoutProps
+ */
 interface AppLayoutProps {
   children?: ReactNode;
 }
 
+/**
+ * AppLayout Component
+ * 
+ * The main layout wrapper for the authenticated application.
+ * Includes:
+ * - Top navigation bar (desktop)
+ * - Bottom navigation bar (mobile)
+ * - Global loading spinner for route transitions
+ * - Floating ChatWidget
+ * - Theme and Language toggles
+ * 
+ * @param {AppLayoutProps} props - Component props
+ * @returns {JSX.Element} The rendered layout
+ */
 export default function AppLayout({ children }: AppLayoutProps) {
   const { t } = useTranslation();
   const pathname = usePathname();
@@ -38,7 +56,13 @@ export default function AppLayout({ children }: AppLayoutProps) {
     { icon: CreditCard, label: t('nav.plans'), path: '/plans' },
   ];
 
-  // Helper function to check if a nav item is active, prioritizing more specific routes
+  /**
+   * Helper function to check if a nav item is active, prioritizing more specific routes.
+   * Ensures that nested routes don't accidentally highlight multiple parent items incorrectly.
+   * 
+   * @param {string} itemPath - The path of the navigation item
+   * @returns {boolean} True if the item should be considered active
+   */
   const isNavItemActive = (itemPath: string) => {
     // Exact match
     if (pathname === itemPath) return true;

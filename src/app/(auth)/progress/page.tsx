@@ -8,6 +8,16 @@ import { http } from '@/lib/http';
 import { Calendar, Activity, TrendingDown } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 
+/**
+ * ProgressPage Component
+ * 
+ * Displays user progress and statistics.
+ * Features:
+ * - Current weight tracking
+ * - Workout frequency stats (monthly/weekly)
+ * - Total workout history
+ * - Detailed breakdown of activity
+ */
 export default function ProgressPage() {
   const { t } = useTranslation();
   const [loading, setLoading] = useState(true);
@@ -17,10 +27,15 @@ export default function ProgressPage() {
   const [statsWeek, setStatsWeek] = useState<any>(null);
   const [statsMonth, setStatsMonth] = useState<any>(null);
 
+  /**
+   * Fetch all progress data on mount
+   * Loads multiple data points in parallel for better performance
+   */
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
+        // Fetch data from various endpoints
         const [ov, st, weight, weekStats, monthStats] = await Promise.all([
           getDashboard().catch(() => null),
           getDashboardStats('month').catch(() => null),
@@ -28,13 +43,16 @@ export default function ProgressPage() {
           getDashboardStats('week').catch(() => null),
           getDashboardStats('month').catch(() => null),
         ]);
+        
         if (!mounted) return;
+        
         setOverview(ov);
         setStats(st);
         setWeightData(weight);
         setStatsWeek(weekStats);
         setStatsMonth(monthStats);
       } catch (err) {
+        // Error handling logic here
       } finally {
         if (mounted) setLoading(false);
       }
