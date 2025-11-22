@@ -8,6 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { ArrowLeft, Plus, X } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
@@ -20,6 +21,12 @@ export default function WorkoutCreatePage() {
   const [selectedExercises, setSelectedExercises] = useState<any[]>([]);
   const [difficulty, setDifficulty] = useState('');
   const [description, setDescription] = useState('');
+  
+  // New fields
+  const [workoutType, setWorkoutType] = useState('');
+  const [daysPerWeek, setDaysPerWeek] = useState('');
+  const [userNotes, setUserNotes] = useState('');
+  
   const [isInitialized, setIsInitialized] = useState(false);
 
   const [loading, setLoading] = useState(false);
@@ -51,6 +58,16 @@ export default function WorkoutCreatePage() {
         setDifficulty(storedDifficulty);
       }
 
+      // Load new fields
+      const storedType = localStorage.getItem('workoutFormType');
+      if (storedType) setWorkoutType(storedType);
+      
+      const storedDays = localStorage.getItem('workoutFormDays');
+      if (storedDays) setDaysPerWeek(storedDays);
+      
+      const storedNotes = localStorage.getItem('workoutFormNotes');
+      if (storedNotes) setUserNotes(storedNotes);
+
       setIsInitialized(true);
     } catch (err) {
       setIsInitialized(true);
@@ -73,8 +90,11 @@ export default function WorkoutCreatePage() {
   useEffect(() => {
     if (isInitialized) {
       localStorage.setItem('workoutFormDifficulty', difficulty);
+      localStorage.setItem('workoutFormType', workoutType);
+      localStorage.setItem('workoutFormDays', daysPerWeek);
+      localStorage.setItem('workoutFormNotes', userNotes);
     }
-  }, [difficulty, isInitialized]);
+  }, [difficulty, workoutType, daysPerWeek, userNotes, isInitialized]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -124,14 +144,15 @@ export default function WorkoutCreatePage() {
       const payload: any = {
         name: workoutName.trim(),
         description: description.trim() || '',
-        duration_minutes: 60, // Default to 60 minutes
+        duration_minutes: estimatedDuration || 60, // Use estimated duration or default
         exercises,
       };
 
       // Add optional fields if provided
-      if (difficulty) {
-        payload.difficulty = difficulty;
-      }
+      if (difficulty) payload.difficulty = difficulty;
+      if (workoutType) payload.type = workoutType;
+      if (daysPerWeek) payload.days_per_week = parseInt(daysPerWeek);
+      if (userNotes) payload.user_notes = userNotes;
 
       const result = await workoutsApi.create(payload);
 
@@ -143,6 +164,9 @@ export default function WorkoutCreatePage() {
       localStorage.removeItem('workoutFormDescription');
       localStorage.removeItem('workoutFormDifficulty');
       localStorage.removeItem('workoutFormExercises');
+      localStorage.removeItem('workoutFormType');
+      localStorage.removeItem('workoutFormDays');
+      localStorage.removeItem('workoutFormNotes');
 
       router.push('/workouts');
     } catch (err: any) {
@@ -209,19 +233,74 @@ export default function WorkoutCreatePage() {
                 />
               </div>
 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label className="text-white">Difficulty Level</Label>
+                  <Select value={difficulty} onValueChange={setDifficulty} disabled={loading}>
+                    <SelectTrigger className="bg-slate-900/50 border-slate-700 text-white">
+                      <SelectValue placeholder="Select difficulty" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                      <SelectItem value="beginner">Beginner</SelectItem>
+                      <SelectItem value="intermediate">Intermediate</SelectItem>
+                      <SelectItem value="advanced">Advanced</SelectItem>
+                      <SelectItem value="expert">Expert</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div className="space-y-2">
+                  <Label className="text-white">Workout Type</Label>
+                  <Select value={workoutType} onValueChange={setWorkoutType} disabled={loading}>
+                    <SelectTrigger className="bg-slate-900/50 border-slate-700 text-white">
+                      <SelectValue placeholder="Select type" />
+                    </SelectTrigger>
+                    <SelectContent className="bg-slate-800 border-slate-700 text-white">
+                      <SelectItem value="strength">Strength Training</SelectItem>
+                      <SelectItem value="cardio">Cardio</SelectItem>
+                      <SelectItem value="hypertrophy">Hypertrophy</SelectItem>
+                      <SelectItem value="endurance">Endurance</SelectItem>
+                      <SelectItem value="flexibility">Flexibility</SelectItem>
+                      <SelectItem value="hiit">HIIT</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="days" className="text-white">Frequency (Days/Week)</Label>
+                  <Input
+                    id="days"
+                    type="number"
+                    min="1"
+                    max="7"
+                    placeholder="e.g. 3"
+                    className="bg-slate-900/50 border-slate-700 text-white placeholder-slate-500"
+                    value={daysPerWeek}
+                    onChange={(e) => setDaysPerWeek(e.target.value)}
+                    disabled={loading}
+                  />
+                </div>
+                
+                <div className="space-y-2">
+                  <Label htmlFor="duration" className="text-white">Estimated Duration</Label>
+                  <div className="p-2 bg-slate-900/50 border border-slate-700 rounded-md text-slate-400">
+                    {estimatedDuration > 0 ? `${estimatedDuration} min` : 'Add exercises first'}
+                  </div>
+                </div>
+              </div>
+
               <div className="space-y-2">
-                <Label className="text-white">Difficulty Level</Label>
-                <Select value={difficulty} onValueChange={setDifficulty} disabled={loading}>
-                  <SelectTrigger className="bg-slate-900/50 border-slate-700 text-white">
-                    <SelectValue placeholder="Select difficulty" />
-                  </SelectTrigger>
-                  <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                    <SelectItem value="beginner">Beginner</SelectItem>
-                    <SelectItem value="intermediate">Intermediate</SelectItem>
-                    <SelectItem value="advanced">Advanced</SelectItem>
-                    <SelectItem value="expert">Expert</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="notes" className="text-white">Personal Notes</Label>
+                <Textarea
+                  id="notes"
+                  placeholder="Any specific instructions or reminders..."
+                  className="bg-slate-900/50 border-slate-700 text-white placeholder-slate-500 resize-none h-20"
+                  value={userNotes}
+                  onChange={(e) => setUserNotes(e.target.value)}
+                  disabled={loading}
+                />
               </div>
             </CardContent>
           </Card>

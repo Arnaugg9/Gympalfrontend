@@ -258,6 +258,24 @@ export async function addWorkoutToday(workoutId: string) {
 }
 
 /**
+ * Get workout count for a user
+ */
+export async function getWorkoutCount(userId: string) {
+  const endpoint = `/api/v1/workouts/users/${userId}/count`;
+  apiLogger.info({ endpoint }, 'Get workout count request');
+  try {
+    const wrappedRes = await http.get<ApiResponse<{ count: number }>>(endpoint);
+    const data = wrappedRes?.data;
+    if (data === undefined) throw new Error('No count in response');
+    apiLogger.info({}, 'Get workout count success');
+    return data.count;
+  } catch (err) {
+    logError(err as Error, { endpoint });
+    throw err;
+  }
+}
+
+/**
  * Workouts API object for convenience
  */
 export const workoutsApi = {
@@ -268,4 +286,5 @@ export const workoutsApi = {
   delete: deleteWorkout,
   remove: deleteWorkout, // Alias for delete
   addToday: addWorkoutToday,
+  getWorkoutCount: getWorkoutCount,
 };
