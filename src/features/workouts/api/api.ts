@@ -258,7 +258,7 @@ export async function addWorkoutToday(workoutId: string) {
 }
 
 /**
- * Get workout count for a user
+ * Get workout count for a user (total created workouts)
  */
 export async function getWorkoutCount(userId: string) {
   const endpoint = `/api/v1/workouts/users/${userId}/count`;
@@ -276,6 +276,28 @@ export async function getWorkoutCount(userId: string) {
 }
 
 /**
+ * Get completed workout count for a user by period
+ * @param userId - User ID
+ * @param period - Period: 'week', 'month', 'year', or 'all'
+ * @param date - Optional reference date (YYYY-MM-DD format)
+ */
+export async function getCompletedWorkoutCount(userId: string, period: 'week' | 'month' | 'year' | 'all' = 'all', date?: string) {
+  const dateStr = date || new Date().toISOString().split('T')[0];
+  const endpoint = `/api/v1/workouts/users/${userId}/completed-count?period=${period}&date=${dateStr}`;
+  apiLogger.info({ endpoint, period, date: dateStr }, 'Get completed workout count request');
+  try {
+    const wrappedRes = await http.get<ApiResponse<{ count: number; period: string }>>(endpoint);
+    const data = wrappedRes?.data;
+    if (data === undefined) throw new Error('No count in response');
+    apiLogger.info({ count: data.count, period }, 'Get completed workout count success');
+    return data.count;
+  } catch (err) {
+    logError(err as Error, { endpoint, period });
+    throw err;
+  }
+}
+
+/**
  * Workouts API object for convenience
  */
 export const workoutsApi = {
@@ -287,4 +309,5 @@ export const workoutsApi = {
   remove: deleteWorkout, // Alias for delete
   addToday: addWorkoutToday,
   getWorkoutCount: getWorkoutCount,
+  getCompletedWorkoutCount: getCompletedWorkoutCount,
 };

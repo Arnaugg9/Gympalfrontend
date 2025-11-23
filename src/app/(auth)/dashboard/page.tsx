@@ -20,22 +20,26 @@ export default function DashboardPage() {
   const [overview, setOverview] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
   const [workoutCount, setWorkoutCount] = useState<number>(0);
+  const [completedThisWeek, setCompletedThisWeek] = useState<number>(0);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        // Load dashboard data and workout count
-        const [ov, st, count] = await Promise.all([
+        const dateStr = new Date().toISOString().split('T')[0];
+        // Load dashboard data and workout counts
+        const [ov, st, count, weekCount] = await Promise.all([
           getDashboard().catch(() => null),
           getDashboardStats().catch(() => null),
-          user?.id ? workoutsApi.getWorkoutCount(user.id).catch(() => 0) : Promise.resolve(0)
+          user?.id ? workoutsApi.getWorkoutCount(user.id).catch(() => 0) : Promise.resolve(0),
+          user?.id ? workoutsApi.getCompletedWorkoutCount(user.id, 'week', dateStr).catch(() => 0) : Promise.resolve(0)
         ]);
 
         if (!mounted) return;
         setOverview(ov);
         setStats(st);
         setWorkoutCount(count || 0);
+        setCompletedThisWeek(weekCount || 0);
       } finally {
         if (mounted) setLoading(false);
       }
@@ -49,17 +53,13 @@ export default function DashboardPage() {
   // Dashboard overview returns: { stats: { total_workouts, total_exercises, completed_routines_this_week, streak }, recent_workouts: [], today_workout: {} }
   // Use workoutCount from state (fetched via workoutsApi.getWorkoutCount) as primary source
   const exerciseCount = overviewData.stats?.total_exercises || 0; // Exercises from completed routines
-  const completedRoutinesThisWeek = overviewData.stats?.completed_routines_this_week || 0;
   const streak = overviewData.stats?.streak || 0;
   const recentWorkouts = overviewData.recent_workouts || [];
   const todayWorkout = overviewData.today_workout;
   
-  // Dashboard stats returns: { total_workouts, total_exercises, total_duration, average_duration }
-  // Use completed routines from overview if available, otherwise from stats
-  const completedThisWeek = completedRoutinesThisWeek || statsData.total_workouts || 0;
-  
-  // Calculate weekly goal from workout frequency or default to 4
-  const weeklyGoal = 4;
+  // Use completedThisWeek from state (fetched via workoutsApi.getCompletedWorkoutCount) as primary source
+  // Calculate weekly goal - default to 7 workouts per week
+  const weeklyGoal = 7;
   const progressPercent = weeklyGoal > 0 ? Math.min(100, (completedThisWeek / weeklyGoal) * 100) : 0;
 
   // Get next workout from recent workouts if available, or today's workout

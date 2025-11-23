@@ -31,6 +31,10 @@ export default function ProgressPage() {
   const [statsMonth, setStatsMonth] = useState<any>(null);
   const [statsYear, setStatsYear] = useState<any>(null);
   const [workoutCount, setWorkoutCount] = useState<number>(0);
+  const [completedWeek, setCompletedWeek] = useState<number>(0);
+  const [completedMonth, setCompletedMonth] = useState<number>(0);
+  const [completedYear, setCompletedYear] = useState<number>(0);
+  const [completedAll, setCompletedAll] = useState<number>(0);
 
   /**
    * Fetch all progress data on mount
@@ -40,8 +44,9 @@ export default function ProgressPage() {
     let mounted = true;
     (async () => {
       try {
+        const dateStr = new Date().toISOString().split('T')[0];
         // Fetch data from various endpoints
-        const [ov, stAll, weight, weekStats, monthStats, yearStats, count] = await Promise.all([
+        const [ov, stAll, weight, weekStats, monthStats, yearStats, count, weekCount, monthCount, yearCount, allCount] = await Promise.all([
           getDashboard().catch(() => null),
           getDashboardStats('all').catch(() => null),
           http.get<any>('/api/v1/personal/info').catch(() => null),
@@ -49,6 +54,10 @@ export default function ProgressPage() {
           getDashboardStats('month').catch(() => null),
           getDashboardStats('year').catch(() => null),
           user?.id ? workoutsApi.getWorkoutCount(user.id).catch(() => 0) : Promise.resolve(0),
+          user?.id ? workoutsApi.getCompletedWorkoutCount(user.id, 'week', dateStr).catch(() => 0) : Promise.resolve(0),
+          user?.id ? workoutsApi.getCompletedWorkoutCount(user.id, 'month', dateStr).catch(() => 0) : Promise.resolve(0),
+          user?.id ? workoutsApi.getCompletedWorkoutCount(user.id, 'year', dateStr).catch(() => 0) : Promise.resolve(0),
+          user?.id ? workoutsApi.getCompletedWorkoutCount(user.id, 'all', dateStr).catch(() => 0) : Promise.resolve(0),
         ]);
         
         if (!mounted) return;
@@ -60,6 +69,10 @@ export default function ProgressPage() {
         setStatsMonth(monthStats);
         setStatsYear(yearStats);
         setWorkoutCount(count || 0);
+        setCompletedWeek(weekCount || 0);
+        setCompletedMonth(monthCount || 0);
+        setCompletedYear(yearCount || 0);
+        setCompletedAll(allCount || 0);
       } catch (err) {
         // Error handling logic here
       } finally {
@@ -75,11 +88,10 @@ export default function ProgressPage() {
   const yearStatsData = statsYear?.data || {};
   const weightDataResponse = weightData?.data || {};
   
-  // Dashboard stats returns: { total_workouts, total_exercises, total_duration, average_duration }
-  // Use workoutCount from state (fetched via workoutsApi.getWorkoutCount) as primary source
-  const workoutsThisMonth = monthStatsData.total_workouts || 0;
-  const workoutsThisWeek = weekStatsData.total_workouts || 0;
-  const workoutsThisYear = yearStatsData.total_workouts || 0;
+  // Use completed workout counts from state (fetched via workoutsApi.getCompletedWorkoutCount) as primary source
+  const workoutsThisMonth = completedMonth;
+  const workoutsThisWeek = completedWeek;
+  const workoutsThisYear = completedYear;
   
   // Personal info returns: { weight_kg, height_cm, age, ... }
   const currentWeight = weightDataResponse.weight_kg || null;
@@ -133,7 +145,7 @@ export default function ProgressPage() {
             </CardContent>
         </Card>
 
-        {/* Total Workouts */}
+        {/* Total Workouts (Completed) */}
         <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300">
             <CardHeader className="pb-2">
               <div className="flex items-center justify-between">
@@ -142,7 +154,7 @@ export default function ProgressPage() {
               </div>
             </CardHeader>
             <CardContent>
-              <p className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{workoutCount}</p>
+              <p className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{completedAll}</p>
               <p className="text-sm text-emerald-600 dark:text-emerald-400">{t('progress.allTime')}</p>
             </CardContent>
         </Card>
@@ -190,7 +202,7 @@ export default function ProgressPage() {
                 <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.allTime')}</p>
               </div>
               <div className="text-right">
-                <p className="text-xl font-bold text-slate-900 dark:text-white">{workoutCount}</p>
+                <p className="text-xl font-bold text-slate-900 dark:text-white">{completedAll}</p>
               </div>
             </div>
             <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
