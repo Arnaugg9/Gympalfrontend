@@ -3,7 +3,8 @@
 import { useEffect, useMemo, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Users, Plus, Heart, UserPlus, Image as ImageIcon, Search, Trash2, Repeat2 } from 'lucide-react';
+import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Users, Plus, Heart, UserPlus, Image as ImageIcon, Search, Trash2, Repeat2, TrendingUp, Clock } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
@@ -101,6 +102,7 @@ export default function SocialPage() {
   const [page, setPage] = useState(1);
   const [limit] = useState(10); // Load 10 posts per batch
   const [hasMore, setHasMore] = useState(true);
+  const [sortFilter, setSortFilter] = useState<'popular' | 'recent'>('popular');
   const [initialReposted, setInitialReposted] = useState<Record<string, boolean>>({});
 
   /**
@@ -150,7 +152,7 @@ export default function SocialPage() {
     try {
       setLoading(true);
       // Fetch posts (which now includes reposts from all users)
-      const postsRes = await socialApi.posts(pageNum, limit);
+      const postsRes = await socialApi.posts(pageNum, limit, sortFilter);
 
       // res structure: { data: [...posts], pagination: {...} }
       // Posts now include both regular posts and reposts from all users
@@ -214,20 +216,8 @@ export default function SocialPage() {
         [...current, ...combinedItems].forEach(item => uniqueMap.set(item.id, item));
         const uniqueItems = Array.from(uniqueMap.values());
 
-        // Sort by reposts count (desc) then by date (newest first) as requested
-        return uniqueItems.sort((a, b) => {
-          // Use reposts_count for sorting priority
-          const countA = (a.isRepost && a.originalPost ? a.originalPost.reposts_count : a.reposts_count) || 0;
-          const countB = (b.isRepost && b.originalPost ? b.originalPost.reposts_count : b.reposts_count) || 0;
-
-          if (countA !== countB) {
-            return countB - countA;
-          }
-
-          const dateA = new Date(a.createdAt || 0).getTime();
-          const dateB = new Date(b.createdAt || 0).getTime();
-          return dateB - dateA;
-        });
+        // Backend already sorts the posts, so we just return them as-is
+        return uniqueItems;
       });
 
       // Update states
@@ -291,6 +281,14 @@ export default function SocialPage() {
       loadPosts(1, true);
     }
   }, [currentUserId, currentUser]);
+
+  // Reload posts when sort filter changes
+  useEffect(() => {
+    if (currentUserId) {
+      setPage(1);
+      loadPosts(1, true);
+    }
+  }, [sortFilter]);
 
   const handleLoadMore = () => {
     const nextPage = page + 1;
@@ -694,15 +692,31 @@ export default function SocialPage() {
         </Button>
       </div>
 
-      {/* Search */}
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-        <Input
-          placeholder={t('social.searchPlaceholder')}
-          value={searchQuery}
-          onChange={(e) => setSearchQuery(e.target.value)}
-          className="pl-10 bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-        />
+      {/* Search and Filter */}
+      <div className="space-y-4">
+        <div className="relative">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+          <Input
+            placeholder={t('social.searchPlaceholder')}
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-10 bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+          />
+        </div>
+        
+        {/* Sort Filter */}
+        <Tabs value={sortFilter} onValueChange={(value) => setSortFilter(value as 'popular' | 'recent')} className="w-full">
+          <TabsList className="grid w-full max-w-md grid-cols-2 bg-slate-100 dark:bg-slate-800">
+            <TabsTrigger value="popular" className="flex items-center gap-2">
+              <TrendingUp className="h-4 w-4" />
+              {t('social.popular', { defaultValue: 'Populares' })}
+            </TabsTrigger>
+            <TabsTrigger value="recent" className="flex items-center gap-2">
+              <Clock className="h-4 w-4" />
+              {t('social.recent', { defaultValue: 'Recientes' })}
+            </TabsTrigger>
+          </TabsList>
+        </Tabs>
       </div>
 
       {/* Posts */}
@@ -833,7 +847,7 @@ export default function SocialPage() {
                       className="text-slate-600 dark:text-slate-400"
                       onClick={() => handleLoadComments(post.id)}
                     >
-                      {post.commentsCount ?? 0} comments
+                      {post.commentsCount ?? 0} {t('social.comments')}
                     </Button>
                     <Button
                       variant="ghost"
@@ -978,7 +992,7 @@ export default function SocialPage() {
                       <div className="flex gap-2">
                         <input
                           type="text"
-                          placeholder="Write a comment..."
+                          placeholder={t('social.writeReply')}
                           value={commentContent[post.id] || ''}
                           onChange={(e) =>
                             setCommentContent((prev) => ({
@@ -1132,14 +1146,14 @@ export default function SocialPage() {
                     <Heart className={`h-4 w-4 mr-2 ${liked[post.id] || post.isLiked ? 'fill-pink-500' : ''}`} />
                     {(post.likesCount ?? 0) + ((liked[post.id] && !post.isLiked) ? 1 : 0)}
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-slate-600 dark:text-slate-400"
-                    onClick={() => handleLoadComments(post.id)}
-                  >
-                    {post.commentsCount ?? 0} {t('social.comment')}s
-                  </Button>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-slate-600 dark:text-slate-400"
+                      onClick={() => handleLoadComments(post.id)}
+                    >
+                      {post.commentsCount ?? 0} {t('social.comments')}
+                    </Button>
                   <Button
                     variant="ghost"
                     size="sm"

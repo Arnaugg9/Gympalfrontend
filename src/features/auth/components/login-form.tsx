@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { Mail } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InputWithIcon } from '@/components/shared/input-with-icon';
@@ -15,6 +16,7 @@ type FormData = {
 };
 
 export default function LoginForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const { setUser, setTokens } = useAuthStore();
   const [loading, setLoading] = useState(false);
@@ -31,10 +33,10 @@ export default function LoginForm() {
 
   const validateForm = (): string | null => {
     if (!formData.email || !formData.email.includes('@')) {
-      return 'Valid email is required';
+      return t('auth.validEmailRequired');
     }
     if (!formData.password || formData.password.length < 6) {
-      return 'Password is required';
+      return t('auth.passwordRequired');
     }
     return null;
   };
@@ -75,16 +77,16 @@ export default function LoginForm() {
           router.push('/dashboard');
         }, 100);
       } else {
-        setError('No authentication token received. Please try again.');
+        setError(t('auth.noTokenReceived'));
       }
     } catch (err: any) {
       const errorCode = err?.response?.data?.code;
-      const errorMessage = err?.response?.data?.error?.message || err?.message || 'Error signing in';
+      const errorMessage = err?.response?.data?.error?.message || err?.message || t('auth.errorSigningIn');
 
       if (errorCode === 'EMAIL_NOT_VERIFIED') {
-        setError('Please verify your email before logging in. Check your inbox for the verification link.');
+        setError(t('auth.verifyEmailBeforeLogin'));
       } else if (errorCode === 'INVALID_CREDENTIALS') {
-        setError('Invalid email or password. Please try again.');
+        setError(t('auth.invalidCredentials'));
       } else {
         setError(errorMessage);
       }
@@ -97,8 +99,8 @@ export default function LoginForm() {
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
       <InputWithIcon
         icon={Mail}
-        label="Email Address"
-        placeholder="your@email.com"
+        label={t('auth.emailAddress')}
+        placeholder={t('auth.emailPlaceholder')}
         type="email"
         required={false}
         name="email"
@@ -107,8 +109,8 @@ export default function LoginForm() {
       />
 
       <PasswordInput
-        label="Password"
-        placeholder="••••••••"
+        label={t('auth.password')}
+        placeholder={t('auth.passwordPlaceholder')}
         required={false}
         name="password"
         value={formData.password}
@@ -118,7 +120,7 @@ export default function LoginForm() {
       {error && <div className="text-sm text-red-400 bg-red-500/10 border border-red-500/30 rounded p-3">{error}</div>}
 
       <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-600 hover:to-cyan-700 text-white font-medium py-2" disabled={loading}>
-        {loading ? 'Signing in...' : 'Sign In'}
+        {loading ? t('auth.signingIn') : t('auth.signIn')}
       </Button>
     </form>
   );

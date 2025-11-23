@@ -21,6 +21,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { useTranslation } from 'react-i18next';
 import { WorkoutTimer } from '@/components/shared/WorkoutTimer';
+import { WorkoutTracker } from '@/components/shared/WorkoutTracker';
 
 /**
  * WorkoutDetailPage Component
@@ -50,10 +51,13 @@ export default function WorkoutDetailPage() {
   const exercises = workout?.exercises || [];
   
   // Check if current user owns this workout
-  const isOwner = user?.id && workout?.user_id === user.id;
+  // Compare as strings to handle UUID string comparisons properly
+  const isOwner = user?.id && workout?.user_id && String(workout.user_id) === String(user.id);
   
-  // Show edit/delete buttons only if user owns the workout and not from social
-  const showEditDelete = isOwner && !fromSocial;
+  // Show edit/delete buttons if workout exists and not from social
+  // Backend will validate permissions when user tries to edit/delete
+  // This ensures buttons are visible even if user store hasn't hydrated yet
+  const showEditDelete = !fromSocial && !!workout;
   
   // Calculate workout duration (use duration_minutes if available, otherwise estimate)
   const workoutDuration = workout?.duration_minutes || (exercises.length * 8) || 60;
@@ -111,10 +115,35 @@ export default function WorkoutDetailPage() {
   }, [params.id]);
 
   /**
-   * Handle edit button click - redirect to edit page
+   * Handle edit button click - redirect to create page with workout data pre-filled
    */
   const handleEdit = () => {
-    router.push(`/workouts/${params.id}/edit`);
+    if (!workout) return;
+    
+    // Store workout data in localStorage for the create page to load
+    localStorage.setItem('workoutEditId', params.id);
+    localStorage.setItem('workoutFormName', workout.name || '');
+    localStorage.setItem('workoutFormDescription', workout.description || '');
+    localStorage.setItem('workoutFormDifficulty', workout.difficulty || '');
+    localStorage.setItem('workoutFormType', workout.type || '');
+    localStorage.setItem('workoutFormDays', workout.days_per_week?.toString() || '');
+    localStorage.setItem('workoutFormNotes', workout.user_notes || '');
+    localStorage.setItem('workoutFormIsPublic', workout.is_public?.toString() || 'true');
+    
+    // Map exercises to the format expected by the create page
+    const exercises = (workout.exercises || []).map((ex: any) => ({
+      id: ex.exercise_id || ex.exercise?.id || ex.id,
+      name: ex.exercise?.name || ex.name || 'Unknown Exercise',
+      exercise_id: ex.exercise_id || ex.exercise?.id || ex.id,
+      sets: ex.sets || 3,
+      reps: ex.reps || 10,
+      weight: ex.weight_kg || ex.weight || 0,
+    }));
+    
+    localStorage.setItem('workoutFormExercises', JSON.stringify(exercises));
+    
+    // Redirect to create page
+    router.push('/workouts/new');
   };
 
   /**
@@ -169,33 +198,43 @@ export default function WorkoutDetailPage() {
           {showEditDelete && (
             <>
               <Button 
-                variant="outline" 
-                className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700 hover:border-slate-400 dark:hover:border-slate-500"
+                variant="ghost" 
+                size="icon"
+                className="text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white hover:bg-slate-100 dark:hover:bg-slate-700"
                 onClick={handleEdit}
+                title={t('workouts.edit', { defaultValue: 'Editar' })}
               >
-                <Edit className="h-4 w-4 mr-2" />
-                {t('workouts.edit', { defaultValue: 'Editar' })}
+                <Edit className="h-4 w-4" />
               </Button>
               <Button 
-                variant="outline" 
-                className="border-red-300 dark:border-slate-600 text-red-600 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-500/10 hover:border-red-400 dark:hover:border-red-500"
+                variant="ghost" 
+                size="icon"
+                className="text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10"
                 onClick={() => setShowDeleteDialog(true)}
                 disabled={isDeleting}
+                title={t('workouts.delete', { defaultValue: 'Eliminar' })}
               >
-                <Trash2 className="h-4 w-4 mr-2" />
-                {t('workouts.delete', { defaultValue: 'Eliminar' })}
+                <Trash2 className="h-4 w-4" />
               </Button>
             </>
           )}
         </div>
       </div>
 
-      {/* Workout Timer Dialog */}
-      <WorkoutTimer
+      {/* Workout Tracker Dialog */}
+      <WorkoutTracker
         open={showTimer}
         onOpenChange={setShowTimer}
         durationMinutes={workoutDuration}
         workoutName={workout?.name}
+        workoutId={params.id}
+        exercises={exercises.map((ex: any) => ({
+          exercise_id: ex.exercise?.id || ex.exercise_id || ex.id,
+          exercise: ex.exercise,
+          name: ex.exercise?.name || ex.name,
+          sets: ex.sets || 3,
+          reps: ex.reps || 10,
+        }))}
       />
 
       {/* Delete Confirmation Dialog */}

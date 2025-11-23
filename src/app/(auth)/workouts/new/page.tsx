@@ -236,30 +236,30 @@ export default function WorkoutCreatePage() {
 
   return (
     <div className="space-y-8">
-      <Link href="/workouts" className="inline-flex items-center text-slate-400 hover:text-white transition-colors">
+      <Link href="/workouts" className="inline-flex items-center text-slate-600 dark:text-slate-400 hover:text-slate-900 dark:hover:text-white transition-colors">
         <ArrowLeft className="h-4 w-4 mr-2" />
-        Back
+        {t('common.back', { defaultValue: 'Back' })}
       </Link>
 
       <div>
-        <h1 className="text-3xl font-bold text-white mb-2">Create New Routine</h1>
-        <p className="text-slate-400">Configure your custom routine</p>
+        <h1 className="text-3xl font-bold text-slate-900 dark:text-white mb-2">{t('workouts.createNewRoutine', { defaultValue: 'Create New Routine' })}</h1>
+        <p className="text-slate-600 dark:text-slate-400">{t('workouts.configureRoutine', { defaultValue: 'Configure your custom routine' })}</p>
       </div>
 
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Main Form Area */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="bg-slate-800/50 border-slate-700">
+          <Card className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 shadow-sm dark:shadow-none hover:shadow-md dark:hover:shadow-none transition-shadow">
             <CardHeader>
-              <CardTitle className="text-white">Basic Information</CardTitle>
+              <CardTitle className="text-slate-900 dark:text-white">{t('workouts.basicInformation', { defaultValue: 'Basic Information' })}</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="space-y-2">
-                <Label htmlFor="name" className="text-white">Routine Name *</Label>
+                <Label htmlFor="name" className="text-slate-900 dark:text-white">{t('workouts.routineName', { defaultValue: 'Routine Name' })} *</Label>
                 <Input
                   id="name"
-                  placeholder="E.g: Push Pull Legs"
-                  className="bg-slate-900/50 border-slate-700 text-white placeholder-slate-500"
+                  placeholder={t('workouts.routineNamePlaceholder', { defaultValue: 'E.g: Push Pull Legs' })}
+                  className="bg-white dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-emerald-500/20"
                     value={workoutName}
                   onChange={(e) => setWorkoutName(e.target.value)}
                   disabled={loading}
@@ -267,11 +267,11 @@ export default function WorkoutCreatePage() {
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="description" className="text-white">Description (Optional)</Label>
+                <Label htmlFor="description" className="text-slate-900 dark:text-white">{t('workouts.description', { defaultValue: 'Description' })} ({t('common.optional', { defaultValue: 'Optional' })})</Label>
                 <Input
                   id="description"
-                  placeholder="E.g: My weekly training plan"
-                  className="bg-slate-900/50 border-slate-700 text-white placeholder-slate-500"
+                  placeholder={t('workouts.descriptionPlaceholder', { defaultValue: 'E.g: My weekly training plan' })}
+                  className="bg-white dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-emerald-500/20"
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
                   disabled={loading}
@@ -280,33 +280,33 @@ export default function WorkoutCreatePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-white">Difficulty Level</Label>
+                  <Label className="text-slate-900 dark:text-white">{t('workouts.difficultyLevel', { defaultValue: 'Difficulty Level' })}</Label>
                   <Select value={difficulty} onValueChange={setDifficulty} disabled={loading}>
-                    <SelectTrigger className="bg-slate-900/50 border-slate-700 text-white">
-                      <SelectValue placeholder="Select difficulty" />
+                    <SelectTrigger className="bg-white dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:border-emerald-500 dark:focus:border-emerald-500">
+                      <SelectValue placeholder={t('workouts.selectDifficulty', { defaultValue: 'Select difficulty' })} />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                      <SelectItem value="beginner">Beginner</SelectItem>
-                      <SelectItem value="intermediate">Intermediate</SelectItem>
-                      <SelectItem value="advanced">Advanced</SelectItem>
-                      <SelectItem value="expert">Expert</SelectItem>
+                    <SelectContent className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-lg">
+                      <SelectItem value="beginner">{t('workouts.beginner', { defaultValue: 'Beginner' })}</SelectItem>
+                      <SelectItem value="intermediate">{t('workouts.intermediate', { defaultValue: 'Intermediate' })}</SelectItem>
+                      <SelectItem value="advanced">{t('workouts.advanced', { defaultValue: 'Advanced' })}</SelectItem>
+                      <SelectItem value="expert">{t('workouts.expert', { defaultValue: 'Expert' })}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-white">Workout Type</Label>
+                  <Label className="text-slate-900 dark:text-white">{t('workouts.workoutType', { defaultValue: 'Workout Type' })}</Label>
                   <Select value={workoutType} onValueChange={setWorkoutType} disabled={loading}>
-                    <SelectTrigger className="bg-slate-900/50 border-slate-700 text-white">
-                      <SelectValue placeholder="Select type" />
+                    <SelectTrigger className="bg-white dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white focus:border-emerald-500 dark:focus:border-emerald-500">
+                      <SelectValue placeholder={t('workouts.selectType', { defaultValue: 'Select type' })} />
                     </SelectTrigger>
-                    <SelectContent className="bg-slate-800 border-slate-700 text-white">
-                      <SelectItem value="strength">Strength Training</SelectItem>
-                      <SelectItem value="cardio">Cardio</SelectItem>
-                      <SelectItem value="hypertrophy">Hypertrophy</SelectItem>
-                      <SelectItem value="endurance">Endurance</SelectItem>
-                      <SelectItem value="flexibility">Flexibility</SelectItem>
-                      <SelectItem value="hiit">HIIT</SelectItem>
+                    <SelectContent className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700 shadow-lg">
+                      <SelectItem value="strength">{t('workouts.strengthTraining', { defaultValue: 'Strength Training' })}</SelectItem>
+                      <SelectItem value="cardio">{t('workouts.cardio', { defaultValue: 'Cardio' })}</SelectItem>
+                      <SelectItem value="hypertrophy">{t('workouts.hypertrophy', { defaultValue: 'Hypertrophy' })}</SelectItem>
+                      <SelectItem value="endurance">{t('workouts.endurance', { defaultValue: 'Endurance' })}</SelectItem>
+                      <SelectItem value="flexibility">{t('workouts.flexibility', { defaultValue: 'Flexibility' })}</SelectItem>
+                      <SelectItem value="hiit">{t('workouts.hiit', { defaultValue: 'HIIT' })}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -314,14 +314,14 @@ export default function WorkoutCreatePage() {
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="days" className="text-white">Frequency (Days/Week)</Label>
+                  <Label htmlFor="days" className="text-slate-900 dark:text-white">{t('workouts.frequency', { defaultValue: 'Frequency (Days/Week)' })}</Label>
                   <Input
                     id="days"
                     type="number"
                     min="1"
                     max="7"
-                    placeholder="e.g. 3"
-                    className="bg-slate-900/50 border-slate-700 text-white placeholder-slate-500"
+                    placeholder={t('workouts.frequencyPlaceholder', { defaultValue: 'e.g. 3' })}
+                    className="bg-white dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-emerald-500/20"
                     value={daysPerWeek}
                     onChange={(e) => setDaysPerWeek(e.target.value)}
                     disabled={loading}
@@ -329,29 +329,29 @@ export default function WorkoutCreatePage() {
                 </div>
                 
                 <div className="space-y-2">
-                  <Label htmlFor="duration" className="text-white">Estimated Duration</Label>
-                  <div className="p-2 bg-slate-900/50 border border-slate-700 rounded-md text-slate-400">
-                    {estimatedDuration > 0 ? `${estimatedDuration} min` : 'Add exercises first'}
+                  <Label htmlFor="duration" className="text-slate-900 dark:text-white">{t('workouts.estimatedDuration', { defaultValue: 'Estimated Duration' })}</Label>
+                  <div className="p-3 bg-slate-50 dark:bg-slate-900/50 border border-slate-300 dark:border-slate-700 rounded-md text-slate-700 dark:text-slate-400 font-medium">
+                    {estimatedDuration > 0 ? `${estimatedDuration} min` : t('workouts.addExercisesFirst', { defaultValue: 'Add exercises first' })}
                   </div>
                 </div>
               </div>
 
               <div className="space-y-2">
-                <Label htmlFor="notes" className="text-white">Personal Notes</Label>
+                <Label htmlFor="notes" className="text-slate-900 dark:text-white">{t('workouts.personalNotes', { defaultValue: 'Personal Notes' })}</Label>
                 <Textarea
                   id="notes"
-                  placeholder="Any specific instructions or reminders..."
-                  className="bg-slate-900/50 border-slate-700 text-white placeholder-slate-500 resize-none h-20"
+                  placeholder={t('workouts.personalNotesPlaceholder', { defaultValue: 'Any specific instructions or reminders...' })}
+                  className="bg-white dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white placeholder-slate-500 dark:placeholder-slate-400 resize-none h-20 focus:border-emerald-500 dark:focus:border-emerald-500 focus:ring-emerald-500/20"
                   value={userNotes}
                   onChange={(e) => setUserNotes(e.target.value)}
                   disabled={loading}
                 />
               </div>
 
-              <div className="flex items-center justify-between pt-2 border-t border-slate-700">
+              <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
                 <div className="space-y-0.5">
-                  <Label htmlFor="isPublic" className="text-white">{t('workouts.makePublic')}</Label>
-                  <p className="text-xs text-slate-400">{t('workouts.makePublicDescription')}</p>
+                  <Label htmlFor="isPublic" className="text-slate-900 dark:text-white font-medium">{t('workouts.makePublic')}</Label>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">{t('workouts.makePublicDescription')}</p>
                 </div>
                 <Switch
                   id="isPublic"
@@ -364,43 +364,49 @@ export default function WorkoutCreatePage() {
           </Card>
 
           {/* Exercises Section */}
-          <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader>
-              <CardTitle className="text-white flex items-center justify-between">
-                Selected Exercises *
+          <Card className="bg-white dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 shadow-sm dark:shadow-none hover:shadow-md dark:hover:shadow-none transition-shadow">
+            <CardHeader className="border-b border-slate-200 dark:border-slate-700">
+              <CardTitle className="text-slate-900 dark:text-white flex items-center justify-between">
+                {t('workouts.selectedExercises', { defaultValue: 'Selected Exercises' })} *
                 <Button
                   onClick={() => router.push('/exercises')}
-                  className="bg-emerald-500 hover:bg-emerald-600 text-white"
+                  className="bg-emerald-500 hover:bg-emerald-600 text-white shadow-sm hover:shadow-md transition-shadow"
                   disabled={loading}
                   size="sm"
                 >
                   <Plus className="h-4 w-4 mr-2" />
-                  Add Exercises
+                  {t('workouts.addExercises', { defaultValue: 'Add Exercises' })}
                 </Button>
               </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
               {selectedExercises.length === 0 ? (
-                <div className="text-center py-8 text-slate-400">
-                  <p>No exercises selected yet</p>
-                  <p className="text-xs mt-2">Click "Add Exercises" to select exercises for your routine</p>
+                <div className="text-center py-12 border-2 border-dashed border-slate-300 dark:border-slate-700 rounded-lg bg-slate-50 dark:bg-slate-900/30">
+                  <p className="text-slate-600 dark:text-slate-400 font-medium">{t('workouts.noExercisesSelected', { defaultValue: 'No exercises selected yet' })}</p>
+                  <p className="text-xs mt-2 text-slate-500 dark:text-slate-500">{t('workouts.clickAddExercises', { defaultValue: 'Click "Add Exercises" to select exercises for your routine' })}</p>
                 </div>
               ) : (
-                <div className="space-y-2">
+                <div className="space-y-3">
                   {selectedExercises.map((exercise, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 bg-slate-900/50 rounded-lg border border-slate-700 hover:border-slate-600 transition-colors">
-                      <div className="flex-1">
-                        <span className="text-white block font-medium">{exercise.name}</span>
-                        <span className="text-xs text-slate-400">
-                          ID: {exercise.id || exercise.exercise_id || exercise.uuid || 'unknown'}
-                        </span>
+                    <div key={index} className="flex items-center justify-between p-4 bg-slate-50 dark:bg-slate-900/50 rounded-lg border border-slate-200 dark:border-slate-700 hover:border-emerald-300 dark:hover:border-emerald-600 hover:bg-emerald-50/50 dark:hover:bg-emerald-500/5 transition-all shadow-sm hover:shadow">
+                      <div className="flex items-center gap-3 flex-1">
+                        <div className="flex-shrink-0 w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-500/20 flex items-center justify-center">
+                          <span className="text-emerald-600 dark:text-emerald-400 font-semibold text-sm">{index + 1}</span>
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-slate-900 dark:text-white block font-medium">{exercise.name}</span>
+                          <span className="text-xs text-slate-500 dark:text-slate-400">
+                            {exercise.sets || 3} {t('workouts.sets', { defaultValue: 'sets' })} × {exercise.reps || 10} {t('workouts.reps', { defaultValue: 'reps' })}
+                          </span>
+                        </div>
                       </div>
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                        className="text-red-500 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 hover:bg-red-50 dark:hover:bg-red-500/10 ml-2"
                         onClick={() => setSelectedExercises((prev) => prev.filter((_, i) => i !== index))}
                         disabled={loading}
+                        title={t('common.remove', { defaultValue: 'Remove' })}
                       >
                         <X className="h-4 w-4" />
                       </Button>
@@ -414,45 +420,50 @@ export default function WorkoutCreatePage() {
 
         {/* Sidebar / Summary */}
         <div>
-          <Card className="bg-gradient-to-br from-emerald-500/20 to-cyan-500/20 border-emerald-500/50 sticky top-4">
-            <CardHeader>
-              <CardTitle className="text-white">Summary</CardTitle>
+          <Card className="bg-gradient-to-br from-emerald-50 via-emerald-50/50 to-cyan-50 dark:from-emerald-500/20 dark:via-emerald-500/20 dark:to-cyan-500/20 border-emerald-200 dark:border-emerald-500/50 shadow-lg dark:shadow-none sticky top-4">
+            <CardHeader className="border-b border-emerald-200/50 dark:border-emerald-500/30">
+              <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-emerald-500"></div>
+                {t('workouts.summary', { defaultValue: 'Summary' })}
+              </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div>
-                <p className="text-slate-400 text-sm">Total Exercises</p>
-                <p className="text-white text-2xl font-bold">{selectedExercises.length}</p>
-              </div>
-              <div>
-                <p className="text-slate-400 text-sm">Estimated Duration</p>
-                <p className="text-white text-2xl font-bold">{estimatedDuration} min</p>
+            <CardContent className="space-y-6 pt-6">
+              <div className="space-y-4">
+                <div className="p-4 bg-white/60 dark:bg-slate-800/40 rounded-lg border border-emerald-200/50 dark:border-emerald-500/30">
+                  <p className="text-slate-600 dark:text-slate-400 text-sm font-medium mb-2">{t('workouts.totalExercises', { defaultValue: 'Total Exercises' })}</p>
+                  <p className="text-slate-900 dark:text-white text-3xl font-bold">{selectedExercises.length}</p>
+                </div>
+                <div className="p-4 bg-white/60 dark:bg-slate-800/40 rounded-lg border border-emerald-200/50 dark:border-emerald-500/30">
+                  <p className="text-slate-600 dark:text-slate-400 text-sm font-medium mb-2">{t('workouts.estimatedDuration', { defaultValue: 'Estimated Duration' })}</p>
+                  <p className="text-slate-900 dark:text-white text-3xl font-bold">{estimatedDuration} <span className="text-lg text-slate-600 dark:text-slate-400">min</span></p>
+                </div>
               </div>
 
               {error && (
-                <div className="text-red-400 text-sm bg-red-500/10 border border-red-500/30 rounded p-3 max-h-20 overflow-y-auto">
-                  <p className="font-medium mb-1">Error:</p>
-                  <p>{error}</p>
+                <div className="text-red-700 dark:text-red-400 text-sm bg-red-50 dark:bg-red-500/10 border border-red-200 dark:border-red-500/30 rounded-lg p-3 max-h-20 overflow-y-auto">
+                  <p className="font-semibold mb-1">{t('common.error', { defaultValue: 'Error' })}:</p>
+                  <p className="text-xs">{error}</p>
                 </div>
               )}
 
               <Button
                 onClick={handleSubmit}
-                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium"
+                className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-semibold shadow-md hover:shadow-lg transition-all disabled:opacity-50 disabled:cursor-not-allowed"
                 disabled={!workoutName.trim() || selectedExercises.length === 0 || loading}
               >
                 {loading ? (
                   <div className="flex items-center gap-2">
                     <LoadingSpinner size="sm" variant="dumbbell" />
-                    <span>Creating...</span>
+                    <span>{t('common.creating', { defaultValue: 'Creating...' })}</span>
                   </div>
                 ) : (
-                  'Save Routine'
+                  t('workouts.saveRoutine', { defaultValue: 'Save Routine' })
                 )}
               </Button>
 
               {loading && (
                 <div className="flex items-center justify-center py-2">
-                  <p className="text-xs text-slate-400">Processing your routine...</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-400">{t('workouts.processingRoutine', { defaultValue: 'Processing your routine...' })}</p>
                 </div>
               )}
             </CardContent>

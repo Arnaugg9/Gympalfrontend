@@ -20,12 +20,13 @@ export type CreateCommentRequest = {
 /**
  * List social posts
  */
-export async function listPosts(page: number = 1, limit: number = 20) {
-  apiLogger.info({ endpoint: '/api/v1/social/posts', page, limit }, 'List posts request');
+export async function listPosts(page: number = 1, limit: number = 20, sort: 'popular' | 'recent' = 'popular') {
+  apiLogger.info({ endpoint: '/api/v1/social/posts', page, limit, sort }, 'List posts request');
   try {
     const params = new URLSearchParams();
     params.append('page', page.toString());
     params.append('limit', limit.toString());
+    params.append('sort', sort);
     const response = await http.get<any>(`/api/v1/social/posts?${params}`);
 
     // Backend returns: { success: true, data: [...posts], pagination: {...}, metadata: {...} }

@@ -97,7 +97,7 @@ export default function LandingPage() {
                   alt="Premium Workouts"
                   className="w-full h-full object-cover opacity-30"
                 />
-                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-emerald-500/40 to-emerald-600/40">
+                <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-emerald-500/20 to-emerald-600/20">
                   <div className="text-center">
                     <Dumbbell className="h-32 w-32 mx-auto mb-4 text-white opacity-80" />
                     <p className="text-2xl font-semibold text-white">Premium Workouts</p>
@@ -160,13 +160,13 @@ export default function LandingPage() {
                 <FeatureItem icon={TrendingUp} title={t('landing.advancedAnalytics')} description={t('landing.advancedAnalyticsDesc')} />
               </div>
             </div>
-            <div className="relative w-full h-96 bg-gradient-to-br from-emerald-400 to-blue-500 rounded-2xl shadow-2xl overflow-hidden">
-              <img
-                src="/images/placeholder.jpg"
-                alt={t('landing.achieveYourBest')}
-                className="absolute inset-0 w-full h-full object-cover opacity-25"
-              />
-              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-emerald-500/40 to-blue-500/40">
+            <div className="relative w-full h-96 bg-gradient-to-br from-orange-400 to-red-500 rounded-2xl shadow-2xl overflow-hidden">
+              {/* Different visual style - using gradient pattern instead of same image */}
+              <div className="absolute inset-0 bg-gradient-to-br from-orange-500/30 via-red-500/30 to-pink-500/30">
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_30%_50%,rgba(255,140,0,0.3),transparent_50%)]"></div>
+                <div className="absolute inset-0 bg-[radial-gradient(circle_at_70%_50%,rgba(239,68,68,0.3),transparent_50%)]"></div>
+              </div>
+              <div className="absolute inset-0 flex items-center justify-center bg-gradient-to-br from-orange-500/25 to-red-500/25">
                 <div className="text-center">
                   <Trophy className="h-24 w-24 mx-auto mb-4 text-white opacity-80" />
                   <p className="text-2xl font-semibold text-white">{t('landing.achieveYourBest')}</p>

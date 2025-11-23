@@ -6,11 +6,12 @@ import { useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Calendar, Plus, Check, Flame, Activity } from 'lucide-react';
+import { Calendar, Plus, Check, Flame, Activity, Play } from 'lucide-react';
 import { http } from '@/lib/http';
 import { getDashboardStats } from '@/features/dashboard/api/api';
 import { workoutsApi } from '@/features/workouts/api/api';
 import { useAuthStore } from '@/lib/store/auth.store';
+import { WorkoutTracker } from '@/components/shared/WorkoutTracker';
 
 /**
  * TodayWorkoutPage Component
@@ -32,6 +33,9 @@ export default function TodayWorkoutPage() {
   const [workoutsThisMonth, setWorkoutsThisMonth] = useState<number>(0);
   const [streak, setStreak] = useState<number>(0);
   const [refreshKey, setRefreshKey] = useState(0);
+  const [showTracker, setShowTracker] = useState(false);
+  const [workoutDetails, setWorkoutDetails] = useState<any>(null);
+  const [scheduledWorkoutId, setScheduledWorkoutId] = useState<string | null>(null);
 
   // Trigger refresh when returning from select page or other actions
   useEffect(() => {
@@ -72,8 +76,23 @@ export default function TodayWorkoutPage() {
         
         if (todayEntry?.workout) {
           setTodayWorkout(todayEntry.workout);
+          setScheduledWorkoutId(todayEntry.scheduled_workout_id || null);
+          
+          // Fetch full workout details if we have workout_id
+          if (todayEntry.workout.id || todayEntry.workout.workout_id) {
+            try {
+              const workoutId = todayEntry.workout.id || todayEntry.workout.workout_id;
+              const details = await workoutsApi.get(workoutId);
+              if (!mounted) return;
+              setWorkoutDetails(details.data?.workout || details.data);
+            } catch (err) {
+              console.error('Failed to fetch workout details:', err);
+            }
+          }
         } else {
           setTodayWorkout(null);
+          setWorkoutDetails(null);
+          setScheduledWorkoutId(null);
         }
 
         setWorkoutsThisWeek(weekCount || 0);
@@ -160,8 +179,30 @@ export default function TodayWorkoutPage() {
                 <p className="text-2xl font-bold text-slate-900 dark:text-white mb-2">{todayWorkout.name || t('workouts.workout')}</p>
                 <p className="text-slate-600 dark:text-slate-400 mb-4">{todayWorkout.description || ''}</p>
                 <div className="flex gap-3">
+                  <Button 
+                    className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+                    onClick={async () => {
+                      // Load workout details if not already loaded
+                      if (!workoutDetails && (todayWorkout.id || todayWorkout.workout_id)) {
+                        try {
+                          const workoutId = todayWorkout.id || todayWorkout.workout_id;
+                          const details = await workoutsApi.get(workoutId);
+                          setWorkoutDetails(details.data?.workout || details.data);
+                          setShowTracker(true);
+                        } catch (err) {
+                          console.error('Failed to load workout details:', err);
+                          alert(t('workouts.loadError', { defaultValue: 'Failed to load workout details' }));
+                        }
+                      } else {
+                        setShowTracker(true);
+                      }
+                    }}
+                  >
+                    <Play className="h-4 w-4 mr-2" />
+                    {t('workouts.startWorkout', { defaultValue: 'Start Workout' })}
+                  </Button>
                   <Link href={`/workouts/${todayWorkout.id || todayWorkout.workout_id}`}>
-                    <Button className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white">
+                    <Button variant="outline" className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-700">
                       {t('workouts.viewRoutine')}
                     </Button>
                   </Link>
@@ -176,6 +217,29 @@ export default function TodayWorkoutPage() {
           </CardContent>
         </Card>
       )}
+
+      {/* Workout Tracker */}
+      <WorkoutTracker
+        open={showTracker}
+        onOpenChange={(open) => {
+          setShowTracker(open);
+          if (!open) {
+            // Optionally reload data when tracker closes
+            setWorkoutDetails(null);
+          }
+        }}
+        durationMinutes={workoutDetails?.duration_minutes || todayWorkout?.duration_minutes || 60}
+        workoutName={workoutDetails?.name || todayWorkout?.name}
+        workoutId={workoutDetails?.id || todayWorkout?.id || todayWorkout?.workout_id}
+        scheduledWorkoutId={scheduledWorkoutId || undefined}
+        exercises={(workoutDetails?.exercises || todayWorkout?.exercises || []).map((ex: any) => ({
+          exercise_id: ex.exercise_id || ex.exercise?.id || ex.id,
+          exercise: ex.exercise,
+          name: ex.exercise?.name || ex.name,
+          sets: ex.sets || 3,
+          reps: ex.reps || 10,
+        }))}
+      />
 
       {/* Summary Cards */}
       <div className="grid md:grid-cols-3 gap-6">

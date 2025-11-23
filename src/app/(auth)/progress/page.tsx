@@ -9,6 +9,8 @@ import { Calendar, Activity, TrendingDown } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { workoutsApi } from '@/features/workouts/api/api';
 import { useAuthStore } from '@/lib/store/auth.store';
+import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 /**
  * ProgressPage Component
@@ -39,6 +41,8 @@ export default function ProgressPage() {
   const [exerciseCountMonth, setExerciseCountMonth] = useState<number>(0);
   const [exerciseCountYear, setExerciseCountYear] = useState<number>(0);
   const [exerciseCountAll, setExerciseCountAll] = useState<number>(0);
+  const [progressStats, setProgressStats] = useState<any>(null);
+  const [chartPeriod, setChartPeriod] = useState<'week' | 'month' | 'year' | 'all'>('month');
 
   /**
    * Fetch all progress data on mount
@@ -50,7 +54,7 @@ export default function ProgressPage() {
       try {
         const dateStr = new Date().toISOString().split('T')[0];
         // Fetch data from various endpoints
-        const [ov, stAll, weight, weekStats, monthStats, yearStats, count, weekCount, monthCount, yearCount, allCount, exWeek, exMonth, exYear, exAll] = await Promise.all([
+        const [ov, stAll, weight, weekStats, monthStats, yearStats, count, weekCount, monthCount, yearCount, allCount, exWeek, exMonth, exYear, exAll, progress] = await Promise.all([
           getDashboard().catch(() => null),
           getDashboardStats('all').catch(() => null),
           http.get<any>('/api/v1/personal/info').catch(() => null),
@@ -66,6 +70,7 @@ export default function ProgressPage() {
           user?.id ? workoutsApi.getCompletedExerciseCount(user.id, 'month', dateStr).catch(() => 0) : Promise.resolve(0),
           user?.id ? workoutsApi.getCompletedExerciseCount(user.id, 'year', dateStr).catch(() => 0) : Promise.resolve(0),
           user?.id ? workoutsApi.getCompletedExerciseCount(user.id, 'all', dateStr).catch(() => 0) : Promise.resolve(0),
+          user?.id ? workoutsApi.getProgressStats('month').catch(() => null) : Promise.resolve(null),
         ]);
         
         if (!mounted) return;
@@ -85,6 +90,7 @@ export default function ProgressPage() {
         setExerciseCountMonth(exMonth || 0);
         setExerciseCountYear(exYear || 0);
         setExerciseCountAll(exAll || 0);
+        setProgressStats(progress?.data || null);
       } catch (err) {
         // Error handling logic here
       } finally {
@@ -93,6 +99,31 @@ export default function ProgressPage() {
     })();
     return () => { mounted = false; };
   }, [user?.id]);
+
+  // Fetch progress stats when period changes
+  useEffect(() => {
+    if (!user?.id) return;
+    let mounted = true;
+    setProgressStats(null); // Clear previous stats immediately when period changes
+    (async () => {
+      try {
+        const response = await workoutsApi.getProgressStats(chartPeriod);
+        if (!mounted) return;
+        // Handle both direct data and wrapped response
+        const stats = response?.data || response;
+        console.log('Progress stats received:', stats); // Debug
+        console.log('Workouts by period:', stats?.workoutsByPeriod); // Debug
+        if (mounted) {
+          setProgressStats(stats);
+        }
+      } catch (error) {
+        console.error('Failed to fetch progress stats:', error);
+        if (!mounted) return;
+        setProgressStats(null);
+      }
+    })();
+    return () => { mounted = false; };
+  }, [user?.id, chartPeriod]);
 
   const statsAllData = statsAll?.data || {};
   const weekStatsData = statsWeek?.data || {};
@@ -266,6 +297,133 @@ export default function ProgressPage() {
           </div>
         </CardContent>
       </Card>
+
+      {/* Charts Section */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Workouts Over Time Chart */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-slate-900 dark:text-white">
+                {t('progress.workoutsOverTime', { defaultValue: 'Workouts Over Time' })}
+              </CardTitle>
+              <Select value={chartPeriod} onValueChange={(value: any) => {
+                setChartPeriod(value);
+                setProgressStats(null); // Reset stats to show loading state
+              }}>
+                <SelectTrigger className="w-[120px] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                  <SelectItem value="week" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800">
+                    {t('progress.week', { defaultValue: 'Week' })}
+                  </SelectItem>
+                  <SelectItem value="month" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800">
+                    {t('progress.month', { defaultValue: 'Month' })}
+                  </SelectItem>
+                  <SelectItem value="year" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800">
+                    {t('progress.year', { defaultValue: 'Year' })}
+                  </SelectItem>
+                  <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800">
+                    {t('progress.all', { defaultValue: 'All' })}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {progressStats?.workoutsByPeriod && Array.isArray(progressStats.workoutsByPeriod) && progressStats.workoutsByPeriod.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={progressStats.workoutsByPeriod.sort((a: any, b: any) => a.date.localeCompare(b.date))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#6b7280"
+                    className="text-xs"
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    stroke="#6b7280"
+                    className="text-xs"
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                      border: '1px solid #334155',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                    labelStyle={{ color: '#fff' }}
+                  />
+                  <Bar dataKey="count" fill="#10b981" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-slate-500 dark:text-slate-400">
+                <p>{t('progress.noData', { defaultValue: 'No workout data available' })}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Weight Progression Chart */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-slate-900 dark:text-white">
+              {t('progress.weightProgression', { defaultValue: 'Weight Progression' })}
+            </CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">
+              {t('progress.weightProgressionDesc', { defaultValue: 'Track your strength gains over time' })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {progressStats?.weightProgression && Object.keys(progressStats.weightProgression).length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#6b7280"
+                    className="text-xs"
+                  />
+                  <YAxis 
+                    stroke="#6b7280"
+                    className="text-xs"
+                    label={{ value: 'Weight (kg)', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                      border: '1px solid #334155',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend />
+                  {Object.entries(progressStats.weightProgression).map(([exercise, data]: [string, any]) => (
+                    <Line
+                      key={exercise}
+                      type="monotone"
+                      dataKey="weight"
+                      data={data}
+                      name={exercise}
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      dot={{ fill: '#10b981', r: 4 }}
+                      connectNulls
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-slate-500 dark:text-slate-400">
+                <p>{t('progress.noWeightData', { defaultValue: 'No weight progression data available' })}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }

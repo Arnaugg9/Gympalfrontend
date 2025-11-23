@@ -347,6 +347,56 @@ export async function getCurrentStreak(userId: string, date?: string) {
   }
 }
 
+/**
+ * Create exercise set logs (batch)
+ */
+async function createSetLogs(logs: any[]): Promise<ApiResponse<{ logs: any[] }>> {
+  try {
+    apiLogger.info(`Creating exercise set logs: ${logs.length} logs`);
+    const response = await http.post<ApiResponse<{ logs: any[] }>>('/api/v1/workouts/set-logs', logs);
+    return response;
+  } catch (error) {
+    logError(error as Error, { action: 'createSetLogs' });
+    throw error;
+  }
+}
+
+/**
+ * Get set logs for a session or scheduled workout
+ */
+async function getSetLogs(sessionId?: string, scheduledWorkoutId?: string): Promise<ApiResponse<{ logs: any[] }>> {
+  try {
+    const params = new URLSearchParams();
+    if (sessionId) params.append('session_id', sessionId);
+    if (scheduledWorkoutId) params.append('scheduled_workout_id', scheduledWorkoutId);
+    
+    apiLogger.info({ sessionId, scheduledWorkoutId }, 'Getting set logs');
+    const response = await http.get<ApiResponse<{ logs: any[] }>>(`/api/v1/workouts/set-logs?${params.toString()}`);
+    return response;
+  } catch (error) {
+    logError(error as Error, { action: 'getSetLogs' });
+    throw error;
+  }
+}
+
+/**
+ * Get progress statistics for charts
+ */
+async function getProgressStats(period: 'week' | 'month' | 'year' | 'all' = 'month', exerciseId?: string): Promise<ApiResponse<any>> {
+  try {
+    const params = new URLSearchParams();
+    params.append('period', period);
+    if (exerciseId) params.append('exercise_id', exerciseId);
+    
+    apiLogger.info({ period, exerciseId }, 'Getting progress stats');
+    const response = await http.get<ApiResponse<any>>(`/api/v1/workouts/progress/stats?${params.toString()}`);
+    return response;
+  } catch (error) {
+    logError(error as Error, { action: 'getProgressStats' });
+    throw error;
+  }
+}
+
 export const workoutsApi = {
   list: listWorkouts,
   create: createWorkout,
@@ -359,4 +409,7 @@ export const workoutsApi = {
   getCompletedWorkoutCount: getCompletedWorkoutCount,
   getCompletedExerciseCount: getCompletedExerciseCount,
   getCurrentStreak: getCurrentStreak,
+  createSetLogs,
+  getSetLogs,
+  getProgressStats,
 };

@@ -185,9 +185,9 @@ export default function EditWorkoutPage() {
   return (
     <div className="space-y-8">
       <Link href={`/workouts/${params.id}`} className="inline-flex items-center text-slate-400 hover:text-white transition-colors">
-        <ArrowLeft className="h-4 w-4 mr-2" />
-        {t('common.back')}
-      </Link>
+            <ArrowLeft className="h-4 w-4 mr-2" />
+            {t('common.back')}
+        </Link>
 
       <div>
         <h1 className="text-3xl font-bold text-white mb-2">{t('workouts.editRoutine', { defaultValue: 'Edit Routine' })}</h1>
@@ -198,30 +198,30 @@ export default function EditWorkoutPage() {
         {/* Main Form Area */}
         <div className="lg:col-span-2 space-y-6">
           <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader>
+        <CardHeader>
               <CardTitle className="text-white">{t('workouts.basicInformation', { defaultValue: 'Basic Information' })}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="space-y-2">
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-2">
                 <Label htmlFor="name" className="text-white">{t('workouts.routineName')} *</Label>
-                <Input
-                  id="name"
+            <Input
+              id="name"
                   placeholder={t('workouts.routineNamePlaceholder', { defaultValue: 'E.g: Push Pull Legs' })}
                   className="bg-slate-900/50 border-slate-700 text-white placeholder-slate-500"
                   value={workoutName}
                   onChange={(e) => setWorkoutName(e.target.value)}
                   disabled={saving}
-                />
-              </div>
+            />
+          </div>
 
-              <div className="space-y-2">
+          <div className="space-y-2">
                 <Label htmlFor="description" className="text-white">{t('workouts.description')} ({t('common.optional', { defaultValue: 'Optional' })})</Label>
                 <Input
-                  id="description"
+              id="description"
                   placeholder={t('workouts.descriptionPlaceholder', { defaultValue: 'E.g: My weekly training plan' })}
                   className="bg-slate-900/50 border-slate-700 text-white placeholder-slate-500"
-                  value={description}
-                  onChange={(e) => setDescription(e.target.value)}
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
                   disabled={saving}
                 />
               </div>
@@ -306,14 +306,14 @@ export default function EditWorkoutPage() {
                   checked={isPublic}
                   onCheckedChange={setIsPublic}
                   disabled={saving}
-                />
-              </div>
-            </CardContent>
-          </Card>
+            />
+          </div>
+        </CardContent>
+      </Card>
 
           {/* Exercises Section */}
           <Card className="bg-slate-800/50 border-slate-700">
-            <CardHeader>
+        <CardHeader>
               <CardTitle className="text-white flex items-center justify-between">
                 {t('workouts.selectedExercises')} *
                 <Button
@@ -326,8 +326,8 @@ export default function EditWorkoutPage() {
                   {t('workouts.addExercises', { defaultValue: 'Add Exercises' })}
                 </Button>
               </CardTitle>
-            </CardHeader>
-            <CardContent>
+        </CardHeader>
+        <CardContent>
               {selectedExercises.length === 0 ? (
                 <div className="text-center py-8 text-slate-400">
                   <p>{t('workouts.noExercisesSelected', { defaultValue: 'No exercises selected yet' })}</p>
@@ -343,7 +343,7 @@ export default function EditWorkoutPage() {
                           {exercise.sets} {t('workouts.sets', { defaultValue: 'sets' })} × {exercise.reps} {t('workouts.reps', { defaultValue: 'reps' })}
                         </span>
                       </div>
-                      <Button
+                  <Button
                         variant="ghost"
                         size="sm"
                         className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
@@ -351,13 +351,13 @@ export default function EditWorkoutPage() {
                         disabled={saving}
                       >
                         <X className="h-4 w-4" />
-                      </Button>
+                  </Button>
                     </div>
                   ))}
-                </div>
-              )}
-            </CardContent>
-          </Card>
+            </div>
+          )}
+        </CardContent>
+      </Card>
         </div>
 
         {/* Sidebar / Summary */}
@@ -383,7 +383,7 @@ export default function EditWorkoutPage() {
                 </div>
               )}
 
-              <Button
+        <Button 
                 onClick={handleSubmit}
                 className="w-full bg-emerald-500 hover:bg-emerald-600 text-white font-medium"
                 disabled={!workoutName.trim() || selectedExercises.length === 0 || saving}
@@ -396,7 +396,7 @@ export default function EditWorkoutPage() {
                 ) : (
                   t('common.save', { defaultValue: 'Save Routine' })
                 )}
-              </Button>
+        </Button>
 
               {saving && (
                 <div className="flex items-center justify-center py-2">

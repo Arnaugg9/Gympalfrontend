@@ -2,11 +2,13 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { AuthContainer } from '@/components/shared';
 import { LoginForm } from '@/features/auth';
 import { getAccessToken } from '@/lib/utils/auth';
 
 export default function LoginPage() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   useEffect(() => {
@@ -47,10 +49,10 @@ export default function LoginPage() {
 
   return (
     <AuthContainer
-      title="Sign In"
-      description="Welcome back to GymPal"
-      footerText="Don't have an account?"
-      footerLink={{ text: 'Sign up', href: '/register' }}
+      title={t('auth.signIn', { defaultValue: 'Sign In' })}
+      description={t('auth.welcomeBack', { defaultValue: 'Welcome back to GymPal' })}
+      footerText={t('auth.dontHaveAccount', { defaultValue: 'Don\'t have an account?' })}
+      footerLink={{ text: t('auth.signUpLink', { defaultValue: 'Sign up' }), href: '/register' }}
     >
       <LoginForm />
     </AuthContainer>

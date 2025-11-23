@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Dumbbell, Check, X } from 'lucide-react';
+import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Dumbbell, Check, X, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -24,6 +24,7 @@ import { workoutsApi } from '@/features/workouts/api/api';
 import { calendarApi } from '@/features/calendar/api/api';
 import { useTranslation } from 'react-i18next';
 import type { CalendarDay } from '@/features/calendar/api/types';
+import { WorkoutTracker } from '@/components/shared/WorkoutTracker';
 
 type CalendarEntry = CalendarDay;
 
@@ -44,6 +45,9 @@ export default function CalendarPage() {
   const [selectedWorkoutId, setSelectedWorkoutId] = useState<string | null>(null);
   const [annotations, setAnnotations] = useState('');
   const [editingAnnotations, setEditingAnnotations] = useState('');
+  const [showTracker, setShowTracker] = useState(false);
+  const [workoutDetails, setWorkoutDetails] = useState<any>(null);
+  const [currentScheduledWorkoutId, setCurrentScheduledWorkoutId] = useState<string | null>(null);
 
   useEffect(() => {
     let mounted = true;
@@ -141,6 +145,28 @@ export default function CalendarPage() {
       setAnnotations('');
       setSelectedWorkoutId(null);
       setIsAddWorkoutDialogOpen(true);
+    }
+  };
+
+  const handleStartWorkout = async () => {
+    if (!selectedDate) return;
+    const entry = dayToEntry[selectedDate];
+    if (!entry?.hasWorkout || !entry.workoutId) return;
+
+    try {
+      const workoutId = entry.workoutId;
+      const details = await workoutsApi.get(workoutId);
+      const workoutData = details.data?.workout || details.data;
+      setWorkoutDetails(workoutData);
+      setCurrentScheduledWorkoutId(entry.id || null);
+      setIsViewWorkoutDialogOpen(false);
+      // Small delay to ensure dialog closes before opening tracker
+      setTimeout(() => {
+        setShowTracker(true);
+      }, 100);
+    } catch (error) {
+      console.error('Failed to load workout details:', error);
+      alert(t('workouts.loadError', { defaultValue: 'Failed to load workout details' }));
     }
   };
 
@@ -884,13 +910,23 @@ export default function CalendarPage() {
                         {t('common.close')}
                       </Button>
                       {!isCompleted && (
-                        <Button
-                          onClick={handleCompleteWorkout}
-                          className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-emerald-500/50 transition-all"
-                        >
-                          <Check className="h-4 w-4 mr-2" />
-                          {t('calendar.markComplete')}
-                        </Button>
+                        <>
+                          <Button
+                            onClick={handleStartWorkout}
+                            className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white shadow-lg hover:shadow-emerald-500/50 transition-all"
+                          >
+                            <Play className="h-4 w-4 mr-2" />
+                            {t('workouts.startWorkout', { defaultValue: 'Start Workout' })}
+                          </Button>
+                          <Button
+                            onClick={handleCompleteWorkout}
+                            variant="outline"
+                            className="border-blue-500 text-blue-600 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-500/10"
+                          >
+                            <Check className="h-4 w-4 mr-2" />
+                            {t('calendar.markComplete')}
+                          </Button>
+                        </>
                       )}
                     </div>
                   </div>
@@ -900,6 +936,30 @@ export default function CalendarPage() {
           })()}
         </DialogContent>
       </Dialog>
+
+      {/* Workout Tracker */}
+      <WorkoutTracker
+        open={showTracker}
+        onOpenChange={(open) => {
+          setShowTracker(open);
+          if (!open) {
+            // Clear workout details when tracker closes
+            setWorkoutDetails(null);
+            setCurrentScheduledWorkoutId(null);
+          }
+        }}
+        durationMinutes={workoutDetails?.duration_minutes || 60}
+        workoutName={workoutDetails?.name}
+        workoutId={workoutDetails?.id}
+        scheduledWorkoutId={currentScheduledWorkoutId || undefined}
+        exercises={(workoutDetails?.exercises || []).map((ex: any) => ({
+          exercise_id: ex.exercise_id || ex.exercise?.id || ex.id,
+          exercise: ex.exercise,
+          name: ex.exercise?.name || ex.name,
+          sets: ex.sets || 3,
+          reps: ex.reps || 10,
+        }))}
+      />
     </div>
   );
 }

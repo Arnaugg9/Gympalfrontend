@@ -3,7 +3,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
-import { ArrowLeft, Search, Check, Play } from 'lucide-react';
+import { ArrowLeft, Search, Check, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -259,20 +259,19 @@ export default function ExercisesPage() {
                           <p className="text-slate-400 text-sm">{exercise.difficulty}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          {videoUrl && (
-                            <Button
-                              variant="ghost"
-                              size="sm"
-                              className="text-slate-400 hover:text-red-500 hover:bg-red-500/10"
-                              onClick={(e) => {
-                                e.stopPropagation();
-                                window.open(videoUrl, '_blank');
-                              }}
-                              title="Watch YouTube video"
-                            >
-                              <Play className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              router.push(`/exercises/${exerciseId}`);
+                            }}
+                            title="Ver detalles"
+                          >
+                            <Eye className="h-4 w-4 mr-1" />
+                            Ver detalles
+                          </Button>
                           <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                             isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-slate-600'
                           }`}>

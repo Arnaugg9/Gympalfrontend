@@ -10,6 +10,7 @@ import { Settings, Bell, Shield, AlertCircle } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import { useTheme } from 'next-themes';
 import { settingsApi } from '@/features/settings/api/api';
 import { useAuthStore } from '@/lib/store/auth.store';
 import {
@@ -27,6 +28,7 @@ export default function SettingsPage() {
   const { t, i18n } = useTranslation();
   const router = useRouter();
   const { user, logout } = useAuthStore();
+  const { setTheme: applyTheme } = useTheme();
 
   // General Settings
   const [theme, setTheme] = useState<'light' | 'dark' | 'auto'>('auto');
@@ -91,9 +93,19 @@ export default function SettingsPage() {
       setError('');
       setSuccess('');
       await settingsApi.updateSettings({ theme, language, timezone });
+      
+      // Apply theme immediately
+      if (theme === 'auto') {
+        applyTheme('system');
+      } else {
+        applyTheme(theme);
+      }
+      
+      // Apply language immediately
       if (language !== i18n.language) {
         i18n.changeLanguage(language);
       }
+      
       setSuccess(t('profile.settings.generalSettingsSaved'));
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {

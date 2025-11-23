@@ -18,6 +18,7 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { Mail, Lock, User, AtSign, Calendar } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { InputWithIcon } from '@/components/shared/input-with-icon';
@@ -51,6 +52,7 @@ type FormData = {
 };
 
 export default function RegisterForm() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
@@ -86,25 +88,25 @@ export default function RegisterForm() {
 
   const validateForm = (): string | null => {
     if (!formData.full_name || formData.full_name.length < 2) {
-      return 'Full name must be at least 2 characters';
+      return t('auth.fullNameMinLength');
     }
     if (!formData.username) {
-      return 'Username is required';
+      return t('auth.usernameRequired');
     }
     if (!formData.email || !formData.email.includes('@')) {
-      return 'Valid email is required';
+      return t('auth.validEmailRequired');
     }
     if (!formData.password || formData.password.length < 8) {
-      return 'Password must be at least 8 characters';
+      return t('auth.passwordMinLength');
     }
     if (formData.password !== formData.password_confirm) {
-      return 'Passwords do not match';
+      return t('auth.passwordsDoNotMatch');
     }
     if (!formData.terms_accepted) {
-      return 'You must accept the terms and conditions';
+      return t('auth.acceptTerms');
     }
     if (!formData.privacy_policy_accepted) {
-      return 'You must accept the privacy policy';
+      return t('auth.acceptPrivacy');
     }
     return null;
   };
@@ -136,12 +138,12 @@ export default function RegisterForm() {
 
       const res = await registerUser(payload);
       // Show success and redirect to login regardless of backend flags
-      setSuccess('Account created! Please check your email to verify your account. Redirecting to login...');
+      setSuccess(t('auth.accountCreated'));
       setTimeout(() => {
         router.replace('/login');
       }, 2000);
     } catch (err: any) {
-      setError(err?.response?.data?.error?.message || err?.message || 'Error registering');
+      setError(err?.response?.data?.error?.message || err?.message || t('auth.errorRegistering'));
     } finally {
       setLoading(false);
     }
@@ -151,8 +153,8 @@ export default function RegisterForm() {
     <form onSubmit={onSubmit} className="space-y-4" noValidate>
       <InputWithIcon
         icon={User}
-        label="Full Name"
-        placeholder="Your name"
+        label={t('auth.fullName')}
+        placeholder={t('auth.fullNamePlaceholder')}
         type="text"
         required={false}
         name="full_name"
@@ -162,8 +164,8 @@ export default function RegisterForm() {
 
       <InputWithIcon
         icon={AtSign}
-        label="Username"
-        placeholder="username (auto-generated)"
+        label={t('auth.username')}
+        placeholder={t('auth.usernamePlaceholder')}
         type="text"
         required={false}
         name="username"
@@ -173,8 +175,8 @@ export default function RegisterForm() {
 
       <InputWithIcon
         icon={Mail}
-        label="Email Address"
-        placeholder="your@email.com"
+        label={t('auth.emailAddress')}
+        placeholder={t('auth.emailPlaceholder')}
         type="email"
         required={false}
         name="email"
@@ -184,7 +186,7 @@ export default function RegisterForm() {
 
       <div className="space-y-2">
         <Label htmlFor="gender" className="text-white">
-          Gender (Optional)
+          {t('auth.gender')}
         </Label>
         <select
           id="gender"
@@ -194,16 +196,16 @@ export default function RegisterForm() {
           onChange={handleChange}
           required={false}
         >
-          <option value="">Select your gender</option>
-          <option value="male">Male</option>
-          <option value="female">Female</option>
-          <option value="other">Other</option>
+          <option value="">{t('auth.selectGender')}</option>
+          <option value="male">{t('auth.male')}</option>
+          <option value="female">{t('auth.female')}</option>
+          <option value="other">{t('auth.other')}</option>
         </select>
       </div>
 
       <div className="space-y-2">
         <Label htmlFor="date_of_birth" className="text-white">
-          Date of Birth (Optional)
+          {t('auth.dateOfBirth')}
         </Label>
         <div className="relative">
           <Calendar className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-slate-400" />
@@ -220,8 +222,8 @@ export default function RegisterForm() {
       </div>
 
       <PasswordInput
-        label="Password"
-        placeholder="••••••••"
+        label={t('auth.password')}
+        placeholder={t('auth.passwordPlaceholder')}
         required={false}
         name="password"
         value={formData.password}
@@ -229,8 +231,8 @@ export default function RegisterForm() {
       />
 
       <PasswordInput
-        label="Confirm Password"
-        placeholder="••••••••"
+        label={t('auth.confirmPassword')}
+        placeholder={t('auth.passwordPlaceholder')}
         required={false}
         name="password_confirm"
         value={formData.password_confirm}
@@ -248,13 +250,13 @@ export default function RegisterForm() {
             onChange={handleChange}
           />
           <label htmlFor="terms" className="text-sm text-slate-400 cursor-pointer">
-            I accept the{' '}
+            {t('auth.acceptTermsAndPrivacy')}{' '}
             <a href="#" className="text-emerald-400 hover:text-emerald-300 transition-colors">
-              terms and conditions
+              {t('auth.termsAndConditions')}
             </a>{' '}
-            and{' '}
+            {t('auth.and')}{' '}
             <a href="#" className="text-emerald-400 hover:text-emerald-300 transition-colors">
-              privacy policy
+              {t('auth.privacyPolicy')}
             </a>
           </label>
         </div>
@@ -271,7 +273,7 @@ export default function RegisterForm() {
             onChange={handleChange}
           />
           <label htmlFor="privacy" className="text-sm text-slate-400 cursor-pointer">
-            I accept the privacy policy
+            {t('auth.acceptPrivacyPolicy')}
           </label>
         </div>
       </div>
@@ -281,7 +283,7 @@ export default function RegisterForm() {
       {success && <div className="text-sm text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 rounded p-3">{success}</div>}
 
       <Button type="submit" className="w-full bg-gradient-to-r from-emerald-500 to-cyan-600 hover:from-emerald-600 hover:to-cyan-700 text-white font-medium py-2" disabled={loading || !!success}>
-        {loading ? 'Creating account...' : 'Create Account'}
+        {loading ? t('auth.creatingAccount') : t('auth.createAccount')}
       </Button>
     </form>
   );

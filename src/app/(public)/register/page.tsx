@@ -2,11 +2,13 @@
 
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { AuthContainer } from '@/components/shared';
 import { RegisterForm } from '@/features/auth';
 import { getAccessToken } from '@/lib/utils/auth';
 
 export default function RegisterPage() {
+  const { t } = useTranslation();
   const router = useRouter();
 
   useEffect(() => {
@@ -36,10 +38,10 @@ export default function RegisterPage() {
 
   return (
     <AuthContainer
-      title="Create Account"
-      description="Join the GymPal community"
-      footerText="Already have an account?"
-      footerLink={{ text: 'Sign in', href: '/login' }}
+      title={t('auth.createAccount', { defaultValue: 'Create Account' })}
+      description={t('auth.joinCommunity', { defaultValue: 'Join the GymPal community' })}
+      footerText={t('auth.alreadyHaveAccount', { defaultValue: 'Already have an account?' })}
+      footerLink={{ text: t('auth.signInLink', { defaultValue: 'Sign in' }), href: '/login' }}
     >
       <RegisterForm />
     </AuthContainer>
