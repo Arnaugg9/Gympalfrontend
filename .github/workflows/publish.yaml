@@ -47,6 +47,8 @@ jobs:
           file: ./Dockerfile
           push: true
           platforms: linux/amd64,linux/arm64
+          # Mantenemos provenance: false para que las tags se vean limpias
+          provenance: false
           tags: |
             ghcr.io/${{ steps.lower.outputs.owner }}/gympalfrontend-frontend:${{ steps.vars.outputs.sha_short }}
             ghcr.io/${{ steps.lower.outputs.owner }}/gympalfrontend-frontend:latest
@@ -54,5 +56,33 @@ jobs:
             org.opencontainers.image.source=https://github.com/${{ github.repository }}
           cache-from: type=gha
           cache-to: type=gha,mode=max
+          # Update GitOps repository with new image tag    
+      - name: Set up SSH for GitOps repo
+        uses: webfactory/ssh-agent@v0.9.0
+        with:
+          ssh-private-key: ${{ secrets.GIT_DEPLOY_KEY }}
 
+      - name: Checkout GitOps repo via SSH
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ vars.GITOPS_OWNER }}/GymPalGitOps
+          path: gitops
+          ssh-key: ${{ secrets.GIT_DEPLOY_KEY }}
 
+      - name: Update image tag in GitOps repo
+        run: |
+          cd gitops/charts/gympal-frontend
+
+          # Install yq
+          sudo wget -qO /usr/local/bin/yq https://github.com/mikefarah/yq/releases/latest/download/yq_linux_amd64
+          sudo chmod +x /usr/local/bin/yq
+
+          # Update image tag
+          yq -i '.image.tag = "${{ steps.vars.outputs.sha_short }}"' values.yaml
+
+          # Commit and push
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git add values.yaml
+          git commit -m "Update gympal-frontend image tag to ${{ steps.vars.outputs.sha_short }}"
+          git push origin main
