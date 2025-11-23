@@ -135,7 +135,7 @@ export interface CreateExerciseRequest {
   is_public?: boolean;
 }
 
-export interface UpdateExerciseRequest extends Partial<CreateExerciseRequest> {}
+export interface UpdateExerciseRequest extends Partial<CreateExerciseRequest> { }
 
 // ============================================================================
 // WORKOUT TYPES
@@ -194,7 +194,7 @@ export interface CreateWorkoutRequest {
   tags?: string[];
 }
 
-export interface UpdateWorkoutRequest extends Partial<CreateWorkoutRequest> {}
+export interface UpdateWorkoutRequest extends Partial<CreateWorkoutRequest> { }
 
 export interface WorkoutSession {
   id: string;
@@ -217,6 +217,7 @@ export interface PostAuthor {
   username?: string;
   full_name?: string;
   avatar_url?: string;
+  isFollowing?: boolean;
 }
 
 export interface Post {
@@ -252,7 +253,7 @@ export interface CreatePostRequest {
   is_public?: boolean;
 }
 
-export interface UpdatePostRequest extends Partial<CreatePostRequest> {}
+export interface UpdatePostRequest extends Partial<CreatePostRequest> { }
 
 export interface PostComment {
   id: string;

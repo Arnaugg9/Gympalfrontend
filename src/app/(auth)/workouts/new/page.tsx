@@ -11,6 +11,7 @@ import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Switch } from '@/components/ui/switch';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { workoutsApi } from '@/features/workouts/api/api';
 
@@ -38,6 +39,7 @@ export default function WorkoutCreatePage() {
   const [workoutType, setWorkoutType] = useState('');
   const [daysPerWeek, setDaysPerWeek] = useState('');
   const [userNotes, setUserNotes] = useState('');
+  const [isPublic, setIsPublic] = useState(true); // Default to public
   
   const [isInitialized, setIsInitialized] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -76,6 +78,9 @@ export default function WorkoutCreatePage() {
       const storedNotes = localStorage.getItem('workoutFormNotes');
       if (storedNotes) setUserNotes(storedNotes);
 
+      const storedIsPublic = localStorage.getItem('workoutFormIsPublic');
+      if (storedIsPublic !== null) setIsPublic(storedIsPublic === 'true');
+
       setIsInitialized(true);
     } catch (err) {
       setIsInitialized(true);
@@ -98,8 +103,9 @@ export default function WorkoutCreatePage() {
       localStorage.setItem('workoutFormType', workoutType);
       localStorage.setItem('workoutFormDays', daysPerWeek);
       localStorage.setItem('workoutFormNotes', userNotes);
+      localStorage.setItem('workoutFormIsPublic', isPublic.toString());
     }
-  }, [difficulty, workoutType, daysPerWeek, userNotes, isInitialized]);
+  }, [difficulty, workoutType, daysPerWeek, userNotes, isPublic, isInitialized]);
 
   useEffect(() => {
     if (isInitialized) {
@@ -161,6 +167,7 @@ export default function WorkoutCreatePage() {
       if (workoutType) payload.type = workoutType;
       if (daysPerWeek) payload.days_per_week = parseInt(daysPerWeek);
       if (userNotes) payload.user_notes = userNotes;
+      payload.is_public = isPublic; // Always include visibility setting
 
       await workoutsApi.create(payload);
 
@@ -175,6 +182,7 @@ export default function WorkoutCreatePage() {
       localStorage.removeItem('workoutFormType');
       localStorage.removeItem('workoutFormDays');
       localStorage.removeItem('workoutFormNotes');
+      localStorage.removeItem('workoutFormIsPublic');
 
       router.push('/workouts');
     } catch (err: any) {
@@ -308,6 +316,19 @@ export default function WorkoutCreatePage() {
                   className="bg-slate-900/50 border-slate-700 text-white placeholder-slate-500 resize-none h-20"
                   value={userNotes}
                   onChange={(e) => setUserNotes(e.target.value)}
+                  disabled={loading}
+                />
+              </div>
+
+              <div className="flex items-center justify-between pt-2 border-t border-slate-700">
+                <div className="space-y-0.5">
+                  <Label htmlFor="isPublic" className="text-white">{t('workouts.makePublic')}</Label>
+                  <p className="text-xs text-slate-400">{t('workouts.makePublicDescription')}</p>
+                </div>
+                <Switch
+                  id="isPublic"
+                  checked={isPublic}
+                  onCheckedChange={setIsPublic}
                   disabled={loading}
                 />
               </div>

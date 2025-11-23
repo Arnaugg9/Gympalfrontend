@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { Switch } from '@/components/ui/switch';
 import { workoutsApi } from '@/features/workouts/api/api';
 import { exercisesApi } from '@/features/exercises/api/api';
 import { useTranslation } from 'react-i18next';
@@ -24,6 +25,7 @@ export default function EditWorkoutPage() {
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
+  const [isPublic, setIsPublic] = useState(true);
 
   useEffect(() => {
     let mounted = true;
@@ -40,6 +42,7 @@ export default function EditWorkoutPage() {
           setName(workoutData.name || '');
           setDescription(workoutData.description || '');
           setSelectedExercises((workoutData.exercises || []).map((e: any) => String(e.id || e.exercise_id || e)));
+          setIsPublic(workoutData.is_public !== undefined ? workoutData.is_public : true);
         }
         
         if (exercisesData) {
@@ -63,6 +66,7 @@ export default function EditWorkoutPage() {
         name: name.trim(),
         description: description.trim(),
         exercises: selectedExercises as any,
+        is_public: isPublic,
       });
       router.push(`/workouts/${params.id}`);
     } catch (err) {
@@ -123,6 +127,19 @@ export default function EditWorkoutPage() {
               onChange={(e) => setDescription(e.target.value)}
               placeholder={t('workouts.descriptionPlaceholder') || 'Workout description...'}
               className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+            />
+          </div>
+
+          <div className="flex items-center justify-between pt-4 border-t border-slate-200 dark:border-slate-700">
+            <div className="space-y-0.5">
+              <Label htmlFor="isPublic" className="text-slate-900 dark:text-white">{t('workouts.makePublic')}</Label>
+              <p className="text-xs text-slate-600 dark:text-slate-400">{t('workouts.makePublicDescription')}</p>
+            </div>
+            <Switch
+              id="isPublic"
+              checked={isPublic}
+              onCheckedChange={setIsPublic}
+              disabled={saving}
             />
           </div>
         </CardContent>
