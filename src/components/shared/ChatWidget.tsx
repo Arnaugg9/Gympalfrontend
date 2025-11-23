@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useRef, useState } from 'react';
-import { MessageCircle, Send, Loader2 } from 'lucide-react';
+import { MessageCircle, Send, Loader2, Maximize2 } from 'lucide-react';
 import { aiChatApi } from '@/features/ai-chat/api/ai-chat.api';
+import Link from 'next/link';
 
 export default function ChatWidget() {
   const [open, setOpen] = useState(false);
@@ -41,7 +42,14 @@ export default function ChatWidget() {
       {open && (
         <div className="w-80 h-96 bg-white/95 dark:bg-slate-800/95 rounded-xl shadow-xl border border-slate-200 dark:border-slate-700 flex flex-col overflow-hidden mb-3">
           <div className="px-4 py-2 border-b border-slate-200 dark:border-slate-700 font-medium flex justify-between items-center">
-            <span>AI Assistant</span>
+            <div className="flex items-center gap-2">
+              <span>AI Assistant</span>
+              <Link href="/ai-chat">
+                <button className="text-slate-400 hover:text-emerald-500 transition-colors p-1">
+                  <Maximize2 className="h-4 w-4" />
+                </button>
+              </Link>
+            </div>
             <span className="text-xs text-emerald-500 flex items-center gap-1">
               <span className="relative flex h-2 w-2">
                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
