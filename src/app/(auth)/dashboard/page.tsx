@@ -10,6 +10,7 @@ import { Dumbbell, Users, Calendar as CalIcon, TrendingUp, MessageSquare, Target
 import { Progress } from '@/components/ui/progress';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { useAuthStore } from '@/lib/store/auth.store';
+import { workoutsApi } from '@/features/workouts/api/api';
 
 export default function DashboardPage() {
   const { t } = useTranslation();
@@ -18,36 +19,35 @@ export default function DashboardPage() {
   const [error, setError] = useState<string>('');
   const [overview, setOverview] = useState<any>(null);
   const [stats, setStats] = useState<any>(null);
+  const [workoutCount, setWorkoutCount] = useState<number>(0);
 
   useEffect(() => {
     let mounted = true;
     (async () => {
       try {
-        // Load dashboard data
-        const [ov, st] = await Promise.all([
-          getDashboard().catch(err => {
-            return null;
-          }),
-          getDashboardStats().catch(err => {
-            return null;
-          })
+        // Load dashboard data and workout count
+        const [ov, st, count] = await Promise.all([
+          getDashboard().catch(() => null),
+          getDashboardStats().catch(() => null),
+          user?.id ? workoutsApi.getWorkoutCount(user.id).catch(() => 0) : Promise.resolve(0)
         ]);
 
         if (!mounted) return;
         setOverview(ov);
         setStats(st);
+        setWorkoutCount(count || 0);
       } finally {
         if (mounted) setLoading(false);
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [user?.id]);
 
   const overviewData = overview?.data || {};
   const statsData = stats?.data || {};
   
   // Dashboard overview returns: { stats: { total_workouts, total_exercises, completed_routines_this_week, streak }, recent_workouts: [], today_workout: {} }
-  const workoutCount = overviewData.stats?.total_workouts || 0;
+  // Use workoutCount from state (fetched via workoutsApi.getWorkoutCount) as primary source
   const exerciseCount = overviewData.stats?.total_exercises || 0; // Exercises from completed routines
   const completedRoutinesThisWeek = overviewData.stats?.completed_routines_this_week || 0;
   const streak = overviewData.stats?.streak || 0;

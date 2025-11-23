@@ -7,6 +7,8 @@ import { getDashboard, getDashboardStats } from '@/features/dashboard/api/api';
 import { http } from '@/lib/http';
 import { Calendar, Activity, TrendingDown } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { workoutsApi } from '@/features/workouts/api/api';
+import { useAuthStore } from '@/lib/store/auth.store';
 
 /**
  * ProgressPage Component
@@ -20,6 +22,7 @@ import { LoadingSpinner } from '@/components/ui/loading-spinner';
  */
 export default function ProgressPage() {
   const { t } = useTranslation();
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [overview, setOverview] = useState<any>(null);
   const [statsAll, setStatsAll] = useState<any>(null);
@@ -27,6 +30,7 @@ export default function ProgressPage() {
   const [statsWeek, setStatsWeek] = useState<any>(null);
   const [statsMonth, setStatsMonth] = useState<any>(null);
   const [statsYear, setStatsYear] = useState<any>(null);
+  const [workoutCount, setWorkoutCount] = useState<number>(0);
 
   /**
    * Fetch all progress data on mount
@@ -37,13 +41,14 @@ export default function ProgressPage() {
     (async () => {
       try {
         // Fetch data from various endpoints
-        const [ov, stAll, weight, weekStats, monthStats, yearStats] = await Promise.all([
+        const [ov, stAll, weight, weekStats, monthStats, yearStats, count] = await Promise.all([
           getDashboard().catch(() => null),
           getDashboardStats('all').catch(() => null),
           http.get<any>('/api/v1/personal/info').catch(() => null),
           getDashboardStats('week').catch(() => null),
           getDashboardStats('month').catch(() => null),
           getDashboardStats('year').catch(() => null),
+          user?.id ? workoutsApi.getWorkoutCount(user.id).catch(() => 0) : Promise.resolve(0),
         ]);
         
         if (!mounted) return;
@@ -54,6 +59,7 @@ export default function ProgressPage() {
         setStatsWeek(weekStats);
         setStatsMonth(monthStats);
         setStatsYear(yearStats);
+        setWorkoutCount(count || 0);
       } catch (err) {
         // Error handling logic here
       } finally {
@@ -61,7 +67,7 @@ export default function ProgressPage() {
       }
     })();
     return () => { mounted = false; };
-  }, []);
+  }, [user?.id]);
 
   const statsAllData = statsAll?.data || {};
   const weekStatsData = statsWeek?.data || {};
@@ -70,7 +76,7 @@ export default function ProgressPage() {
   const weightDataResponse = weightData?.data || {};
   
   // Dashboard stats returns: { total_workouts, total_exercises, total_duration, average_duration }
-  const workoutCount = statsAllData.total_workouts || 0;
+  // Use workoutCount from state (fetched via workoutsApi.getWorkoutCount) as primary source
   const workoutsThisMonth = monthStatsData.total_workouts || 0;
   const workoutsThisWeek = weekStatsData.total_workouts || 0;
   const workoutsThisYear = yearStatsData.total_workouts || 0;
