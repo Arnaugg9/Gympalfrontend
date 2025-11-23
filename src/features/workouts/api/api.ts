@@ -325,6 +325,28 @@ export async function getCompletedExerciseCount(userId: string, period: 'week' |
 /**
  * Workouts API object for convenience
  */
+/**
+ * Get current streak (consecutive days with scheduled workouts)
+ * @param userId - User ID
+ * @param date - Optional reference date (YYYY-MM-DD format)
+ */
+export async function getCurrentStreak(userId: string, date?: string) {
+  const dateStr = date || new Date().toISOString().split('T')[0];
+  apiLogger.info({ endpoint: `/api/v1/workouts/users/${userId}/streak`, date: dateStr }, 'Get current streak request');
+  try {
+    const params = new URLSearchParams();
+    if (dateStr) params.append('date', dateStr);
+    const wrappedRes = await http.get<ApiResponse<{ streak: number }>>(`/api/v1/workouts/users/${userId}/streak?${params}`);
+    const data = wrappedRes?.data;
+    if (data === undefined) throw new Error('No streak in response');
+    apiLogger.info({ streak: data.streak }, 'Get current streak success');
+    return data.streak;
+  } catch (err) {
+    logError(err as Error, { endpoint: `/api/v1/workouts/users/${userId}/streak` });
+    throw err;
+  }
+}
+
 export const workoutsApi = {
   list: listWorkouts,
   create: createWorkout,
@@ -336,4 +358,5 @@ export const workoutsApi = {
   getWorkoutCount: getWorkoutCount,
   getCompletedWorkoutCount: getCompletedWorkoutCount,
   getCompletedExerciseCount: getCompletedExerciseCount,
+  getCurrentStreak: getCurrentStreak,
 };

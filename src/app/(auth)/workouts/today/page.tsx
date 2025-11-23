@@ -9,6 +9,8 @@ import { Button } from '@/components/ui/button';
 import { Calendar, Plus, Check, Flame, Activity } from 'lucide-react';
 import { http } from '@/lib/http';
 import { getDashboardStats } from '@/features/dashboard/api/api';
+import { workoutsApi } from '@/features/workouts/api/api';
+import { useAuthStore } from '@/lib/store/auth.store';
 
 /**
  * TodayWorkoutPage Component
@@ -23,10 +25,11 @@ import { getDashboardStats } from '@/features/dashboard/api/api';
 export default function TodayWorkoutPage() {
   const { t } = useTranslation();
   const searchParams = useSearchParams();
+  const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [todayWorkout, setTodayWorkout] = useState<any>(null);
-  const [weekStats, setWeekStats] = useState<any>({});
-  const [monthStats, setMonthStats] = useState<any>({});
+  const [workoutsThisWeek, setWorkoutsThisWeek] = useState<number>(0);
+  const [workoutsThisMonth, setWorkoutsThisMonth] = useState<number>(0);
   const [streak, setStreak] = useState<number>(0);
   const [refreshKey, setRefreshKey] = useState(0);
 
@@ -53,10 +56,12 @@ export default function TodayWorkoutPage() {
 
     (async () => {
       try {
-        const [calendarRes, weekStatsRes, monthStatsRes] = await Promise.all([
+        const dateStr = new Date().toISOString().split('T')[0];
+        const [calendarRes, weekCount, monthCount, streakCount] = await Promise.all([
           http.get<any>(`/api/v1/calendar?month=${month}&year=${year}`).catch(() => null),
-          getDashboardStats('week').catch(() => null),
-          getDashboardStats('month').catch(() => null),
+          user?.id ? workoutsApi.getCompletedWorkoutCount(user.id, 'week', dateStr).catch(() => 0) : Promise.resolve(0),
+          user?.id ? workoutsApi.getCompletedWorkoutCount(user.id, 'month', dateStr).catch(() => 0) : Promise.resolve(0),
+          user?.id ? workoutsApi.getCurrentStreak(user.id, dateStr).catch(() => 0) : Promise.resolve(0),
         ]);
 
         if (!mounted) return;
@@ -71,13 +76,9 @@ export default function TodayWorkoutPage() {
           setTodayWorkout(null);
         }
 
-        setWeekStats(weekStatsRes || {});
-        setMonthStats(monthStatsRes || {});
-
-        // Simple Streak calculation based on weekly activity
-        // (Ideally should come from backend)
-        const workoutsThisWeek = weekStatsRes?.total_workouts || 0;
-        setStreak(workoutsThisWeek > 0 ? 7 : 0);
+        setWorkoutsThisWeek(weekCount || 0);
+        setWorkoutsThisMonth(monthCount || 0);
+        setStreak(streakCount || 0);
       } catch (err) {
         // Error handling
       } finally {
@@ -86,7 +87,7 @@ export default function TodayWorkoutPage() {
     })();
 
     return () => { mounted = false; };
-  }, [refreshKey]);
+  }, [refreshKey, user?.id]);
 
   const today = new Date();
   // Format current date
@@ -97,9 +98,6 @@ export default function TodayWorkoutPage() {
     day: 'numeric' 
   });
   const formattedDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
-
-  const workoutsThisWeek = weekStats?.total_workouts || 0;
-  const workoutsThisMonth = monthStats?.total_workouts || 0;
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="text-slate-400">{t('common.loading')}</div></div>;
@@ -190,7 +188,7 @@ export default function TodayWorkoutPage() {
               </div>
               <div>
                 <p className="text-sm text-slate-600 dark:text-slate-400 mb-1">{t('workouts.thisWeek')}</p>
-                <p className="text-2xl font-bold text-slate-900 dark:text-white">{workoutsThisWeek} {t('workouts.thisWeekDescription')}</p>
+                <p className="text-2xl font-bold text-slate-900 dark:text-white">{workoutsThisWeek} {t('workouts.workouts')}</p>
               </div>
             </div>
           </CardContent>
