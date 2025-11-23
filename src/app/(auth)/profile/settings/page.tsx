@@ -94,10 +94,10 @@ export default function SettingsPage() {
       if (language !== i18n.language) {
         i18n.changeLanguage(language);
       }
-      setSuccess('General settings saved successfully');
+      setSuccess(t('profile.settings.generalSettingsSaved'));
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err?.message || 'Error saving settings');
+      setError(err?.message || t('profile.settings.errorSaving'));
     } finally {
       setSaving(false);
     }
@@ -112,10 +112,10 @@ export default function SettingsPage() {
         email: emailNotifications === 'yes',
         push: pushNotifications === 'yes',
       });
-      setSuccess('Notification settings saved successfully');
+      setSuccess(t('profile.settings.notificationSettingsSaved'));
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err?.message || 'Error saving notification settings');
+      setError(err?.message || t('profile.settings.errorSavingNotifications'));
     } finally {
       setSaving(false);
     }
@@ -131,10 +131,10 @@ export default function SettingsPage() {
         workoutVisibility,
         showStats,
       });
-      setSuccess('Privacy settings saved successfully');
+      setSuccess(t('profile.settings.privacySettingsSaved'));
       setTimeout(() => setSuccess(''), 3000);
     } catch (err: any) {
-      setError(err?.message || 'Error saving privacy settings');
+      setError(err?.message || t('profile.settings.errorSavingPrivacy'));
     } finally {
       setSaving(false);
     }
@@ -149,7 +149,7 @@ export default function SettingsPage() {
       const userId = user?.id;
       
       if (!userId) {
-        throw new Error('User ID not found. Please try logging out and back in.');
+        throw new Error(t('profile.settings.errorDeleting'));
       }
 
       // Call the delete account endpoint
@@ -165,7 +165,7 @@ export default function SettingsPage() {
       setShowDeleteWarning(false);
       router.push('/login');
     } catch (err: any) {
-      setError(err?.message || 'Error deleting account');
+      setError(err?.message || t('profile.settings.errorDeleting'));
       setIsDeletingAccount(false);
     }
   };
@@ -173,7 +173,7 @@ export default function SettingsPage() {
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
-        <div className="text-slate-400">Loading settings...</div>
+        <div className="text-slate-400">{t('common.loading')}</div>
       </div>
     );
   }
@@ -182,12 +182,12 @@ export default function SettingsPage() {
     <div className="space-y-8">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-slate-900 dark:text-white mb-2">Settings</h1>
-          <p className="text-slate-600 dark:text-slate-400">Manage your account and preferences</p>
+          <h1 className="text-slate-900 dark:text-white mb-2">{t('profile.settings.title')}</h1>
+          <p className="text-slate-600 dark:text-slate-400">{t('profile.settings.description')}</p>
         </div>
         <Link href="/profile">
           <Button variant="outline" className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300">
-            Back
+            {t('common.back')}
           </Button>
         </Link>
       </div>
@@ -210,29 +210,29 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
               <Settings className="h-5 w-5 text-blue-500" />
-              General Settings
+              {t('profile.settings.generalSettings')}
             </CardTitle>
             <CardDescription className="text-slate-600 dark:text-slate-400">
-              Theme, language and timezone
+              {t('profile.settings.generalDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-slate-900 dark:text-white">Theme</Label>
+              <Label className="text-slate-900 dark:text-white">{t('profile.settings.theme')}</Label>
               <Select value={theme} onValueChange={(value: any) => setTheme(value)}>
                 <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
-                  <SelectItem value="light">Light</SelectItem>
-                  <SelectItem value="dark">Dark</SelectItem>
-                  <SelectItem value="auto">Auto</SelectItem>
+                  <SelectItem value="light">{t('profile.settings.light')}</SelectItem>
+                  <SelectItem value="dark">{t('profile.settings.dark')}</SelectItem>
+                  <SelectItem value="auto">{t('profile.settings.auto')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-900 dark:text-white">Language</Label>
+              <Label className="text-slate-900 dark:text-white">{t('profile.settings.language')}</Label>
               <Select value={language} onValueChange={setLanguage}>
                 <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
                   <SelectValue />
@@ -247,7 +247,7 @@ export default function SettingsPage() {
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-900 dark:text-white">Timezone</Label>
+              <Label className="text-slate-900 dark:text-white">{t('profile.settings.timezone')}</Label>
               <Select value={timezone} onValueChange={setTimezone}>
                 <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
                   <SelectValue />
@@ -265,7 +265,7 @@ export default function SettingsPage() {
             </div>
 
             <Button onClick={handleSaveGeneralSettings} disabled={saving} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white">
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? t('profile.settings.saving') : t('profile.settings.saveChanges')}
             </Button>
           </CardContent>
         </Card>
@@ -275,41 +275,41 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
               <Bell className="h-5 w-5 text-blue-500" />
-              Notifications
+              {t('profile.settings.notifications')}
             </CardTitle>
             <CardDescription className="text-slate-600 dark:text-slate-400">
-              Manage your notification preferences
+              {t('profile.settings.notificationsDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-slate-900 dark:text-white">Email Notifications</Label>
+              <Label className="text-slate-900 dark:text-white">{t('profile.settings.emailNotifications')}</Label>
               <Select value={emailNotifications} onValueChange={setEmailNotifications}>
                 <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
-                  <SelectItem value="yes">Yes</SelectItem>
-                  <SelectItem value="no">No</SelectItem>
+                  <SelectItem value="yes">{t('common.yes')}</SelectItem>
+                  <SelectItem value="no">{t('common.no')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-900 dark:text-white">Push Notifications</Label>
+              <Label className="text-slate-900 dark:text-white">{t('profile.settings.pushNotifications')}</Label>
               <Select value={pushNotifications} onValueChange={setPushNotifications}>
                 <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
-                  <SelectItem value="yes">Yes</SelectItem>
-                  <SelectItem value="no">No</SelectItem>
+                  <SelectItem value="yes">{t('common.yes')}</SelectItem>
+                  <SelectItem value="no">{t('common.no')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <Button onClick={handleSaveNotifications} disabled={saving} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white">
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? t('profile.settings.saving') : t('profile.settings.saveChanges')}
             </Button>
           </CardContent>
         </Card>
@@ -319,48 +319,48 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
               <Shield className="h-5 w-5 text-green-500" />
-              Privacy
+              {t('profile.settings.privacy')}
             </CardTitle>
             <CardDescription className="text-slate-600 dark:text-slate-400">
-              Control your visibility
+              {t('profile.settings.privacyDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
             <div className="space-y-2">
-              <Label className="text-slate-900 dark:text-white">Profile Visibility</Label>
+              <Label className="text-slate-900 dark:text-white">{t('profile.settings.profileVisibility')}</Label>
               <Select value={profileVisibility} onValueChange={(value: any) => setProfileVisibility(value)}>
                 <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
-                  <SelectItem value="public">Public</SelectItem>
-                  <SelectItem value="friends">Friends Only</SelectItem>
-                  <SelectItem value="private">Private</SelectItem>
+                  <SelectItem value="public">{t('profile.settings.public')}</SelectItem>
+                  <SelectItem value="friends">{t('profile.settings.friendsOnly')}</SelectItem>
+                  <SelectItem value="private">{t('profile.settings.private')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="space-y-2">
-              <Label className="text-slate-900 dark:text-white">Workout Visibility</Label>
+              <Label className="text-slate-900 dark:text-white">{t('profile.settings.workoutVisibility')}</Label>
               <Select value={workoutVisibility} onValueChange={(value: any) => setWorkoutVisibility(value)}>
                 <SelectTrigger className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent className="bg-white dark:bg-slate-800 border-slate-300 dark:border-slate-700">
-                  <SelectItem value="public">Public</SelectItem>
-                  <SelectItem value="friends">Friends Only</SelectItem>
-                  <SelectItem value="private">Private</SelectItem>
+                  <SelectItem value="public">{t('profile.settings.public')}</SelectItem>
+                  <SelectItem value="friends">{t('profile.settings.friendsOnly')}</SelectItem>
+                  <SelectItem value="private">{t('profile.settings.private')}</SelectItem>
                 </SelectContent>
               </Select>
             </div>
 
             <div className="flex items-center justify-between">
-              <Label className="text-slate-900 dark:text-white">Show Statistics</Label>
+              <Label className="text-slate-900 dark:text-white">{t('profile.settings.showStatistics')}</Label>
               <Switch checked={showStats} onCheckedChange={setShowStats} />
             </div>
 
             <Button onClick={handleSavePrivacy} disabled={saving} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white">
-              {saving ? 'Saving...' : 'Save Changes'}
+              {saving ? t('profile.settings.saving') : t('profile.settings.saveChanges')}
             </Button>
           </CardContent>
         </Card>
@@ -370,10 +370,10 @@ export default function SettingsPage() {
           <CardHeader>
             <CardTitle className="text-red-700 dark:text-red-400 flex items-center gap-2">
               <AlertCircle className="h-5 w-5" />
-              Danger Zone
+              {t('profile.settings.dangerZone')}
             </CardTitle>
             <CardDescription className="text-red-600 dark:text-red-400">
-              Irreversible actions that will affect your account
+              {t('profile.settings.dangerDescription')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -382,10 +382,10 @@ export default function SettingsPage() {
               className="border-red-300 dark:border-red-700 text-red-700 dark:text-red-400 hover:bg-red-50 dark:hover:bg-red-950/50"
               onClick={() => setShowDeleteWarning(true)}
             >
-              Delete Account Permanently
+              {t('profile.settings.deleteAccount')}
             </Button>
             <p className="text-sm text-red-600 dark:text-red-400 mt-3">
-              This action cannot be undone. All your data, workouts, posts and settings will be deleted.
+              {t('profile.settings.deleteAccountWarning')}
             </p>
           </CardContent>
         </Card>
@@ -395,21 +395,21 @@ export default function SettingsPage() {
       <AlertDialog open={showDeleteWarning} onOpenChange={setShowDeleteWarning}>
         <AlertDialogContent className="bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-red-700 dark:text-red-400">Delete Account Permanently?</AlertDialogTitle>
+            <AlertDialogTitle className="text-red-700 dark:text-red-400">{t('profile.settings.deleteAccountTitle')}</AlertDialogTitle>
             <AlertDialogDescription className="text-slate-600 dark:text-slate-400">
-              This action is irreversible. All your data, workouts, posts and settings will be deleted.
+              {t('profile.settings.deleteAccountDescription')}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300">
-              Cancel
+              {t('common.cancel')}
             </AlertDialogCancel>
             <AlertDialogAction
               className="bg-red-600 hover:bg-red-700 text-white"
               disabled={isDeletingAccount}
               onClick={handleDeleteAccount}
             >
-              {isDeletingAccount ? 'Deleting...' : 'Yes, Delete My Account'}
+              {isDeletingAccount ? t('profile.settings.deleting') : t('profile.settings.yesDeleteAccount')}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
