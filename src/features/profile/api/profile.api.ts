@@ -34,6 +34,32 @@ export interface FitnessProfileData {
 }
 
 /**
+ * Dietary preferences data interface
+ */
+export interface DietaryPreferencesData {
+  dietary_restrictions?: string[];
+  allergies?: string[];
+  preferred_cuisines?: string[];
+  disliked_foods?: string[];
+  daily_calorie_target?: number;
+  protein_target_percentage?: number;
+  carb_target_percentage?: number;
+  fat_target_percentage?: number;
+  meal_preferences?: string;
+}
+
+/**
+ * User stats data interface
+ */
+export interface UserStatsData {
+  height_cm?: number;
+  weight_kg?: number;
+  body_fat_percentage?: number;
+  target_weight_kg?: number;
+  recorded_at?: string;
+}
+
+/**
  * Activity statistics interface
  */
 export interface ActivityStats {
@@ -192,6 +218,60 @@ export const profileApi = {
         totalPosts: postCount || 0,
         followers: followStats.followersCount || 0,
       };
+    }
+  },
+
+  // Dietary preferences methods
+  updateDietaryPreferences: async (data: DietaryPreferencesData) => {
+    const endpoint = '/api/v1/personal/dietary-preferences';
+    apiLogger.info({ endpoint }, 'Updating dietary preferences');
+    try {
+      const response = await http.put<ApiResponse<any>>(endpoint, data);
+      apiLogger.info('Dietary preferences updated successfully');
+      return response?.data || response;
+    } catch (err) {
+      logError(err as Error, { endpoint, data });
+      throw err;
+    }
+  },
+
+  getDietaryPreferences: async () => {
+    const endpoint = '/api/v1/personal/dietary-preferences';
+    apiLogger.info({ endpoint }, 'Fetching dietary preferences');
+    try {
+      const response = await http.get<ApiResponse<any>>(endpoint);
+      apiLogger.info('Dietary preferences retrieved successfully');
+      return response?.data || response;
+    } catch (err) {
+      logError(err as Error, { endpoint });
+      throw err;
+    }
+  },
+
+  // User stats methods
+  updateUserStats: async (data: UserStatsData) => {
+    const endpoint = '/api/v1/personal/stats';
+    apiLogger.info({ endpoint }, 'Updating user stats');
+    try {
+      const response = await http.put<ApiResponse<any>>(endpoint, data);
+      apiLogger.info('User stats updated successfully');
+      return response?.data || response;
+    } catch (err) {
+      logError(err as Error, { endpoint, data });
+      throw err;
+    }
+  },
+
+  getUserStats: async () => {
+    const endpoint = '/api/v1/personal/stats';
+    apiLogger.info({ endpoint }, 'Fetching user stats');
+    try {
+      const response = await http.get<ApiResponse<any>>(endpoint);
+      apiLogger.info('User stats retrieved successfully');
+      return response?.data || response;
+    } catch (err) {
+      logError(err as Error, { endpoint });
+      throw err;
     }
   },
 };

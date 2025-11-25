@@ -40,17 +40,42 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<any>(null);
   const [personalInfo, setPersonalInfo] = useState<any>(null);
   const [fitnessProfile, setFitnessProfile] = useState<any>(null);
+  const [dietaryPreferences, setDietaryPreferences] = useState<any>(null);
+  const [userStats, setUserStats] = useState<any>(null);
   const [achievements, setAchievements] = useState<any[]>([]);
   const [activityStats, setActivityStats] = useState<any>(null);
   const [isEditStatsDialogOpen, setIsEditStatsDialogOpen] = useState(false);
   const [isEditBioDialogOpen, setIsEditBioDialogOpen] = useState(false);
   const [isEditFitnessDialogOpen, setIsEditFitnessDialogOpen] = useState(false);
-  const [editedStats, setEditedStats] = useState({ weight: '', height: '', age: '' });
+  const [isEditDietaryDialogOpen, setIsEditDietaryDialogOpen] = useState(false);
+  const [editedStats, setEditedStats] = useState({ weight: '', height: '', age: '', body_fat_percentage: '', target_weight_kg: '', recorded_at: '' });
   const [editedBio, setEditedBio] = useState('');
-  const [editedFitness, setEditedFitness] = useState({ primary_goal: '', experience_level: 'beginner' as 'beginner' | 'intermediate' | 'advanced' | 'expert', workout_frequency: '' });
+  const [editedFitness, setEditedFitness] = useState({ 
+    primary_goal: '', 
+    experience_level: 'beginner' as 'beginner' | 'intermediate' | 'advanced' | 'expert', 
+    workout_frequency: '',
+    preferred_workout_duration: '',
+    available_equipment: [] as string[],
+    injury_history: [] as string[],
+    medical_restrictions: [] as string[],
+    fitness_goals_timeline: '',
+    motivation_level: '',
+  });
+  const [editedDietary, setEditedDietary] = useState({
+    dietary_restrictions: [] as string[],
+    allergies: [] as string[],
+    preferred_cuisines: [] as string[],
+    disliked_foods: [] as string[],
+    daily_calorie_target: '',
+    protein_target_percentage: '',
+    carb_target_percentage: '',
+    fat_target_percentage: '',
+    meal_preferences: '',
+  });
   const [isSavingStats, setIsSavingStats] = useState(false);
   const [isSavingBio, setIsSavingBio] = useState(false);
   const [isSavingFitness, setIsSavingFitness] = useState(false);
+  const [isSavingDietary, setIsSavingDietary] = useState(false);
   const [isLoggingOut, setIsLoggingOut] = useState(false);
   const [isUploadingAvatar, setIsUploadingAvatar] = useState(false);
   const [errorDialog, setErrorDialog] = useState<{ open: boolean; message: string }>({ open: false, message: '' });
@@ -153,12 +178,29 @@ export default function ProfilePage() {
           weight: finalInfo?.weight_kg ?? '',
           height: finalInfo?.height_cm ?? '',
           age: finalInfo?.age ?? '',
+          body_fat_percentage: finalInfo?.body_fat_percentage ?? '',
+          target_weight_kg: '',
+          recorded_at: '',
         });
 
         // Try to get fitness profile
         try {
           const fitness = await profileApi.getFitnessProfile();
           if (mounted) setFitnessProfile(fitness);
+        } catch (err) {
+        }
+
+        // Try to get dietary preferences
+        try {
+          const dietary = await profileApi.getDietaryPreferences();
+          if (mounted) setDietaryPreferences(dietary);
+        } catch (err) {
+        }
+
+        // Try to get user stats
+        try {
+          const stats = await profileApi.getUserStats();
+          if (mounted) setUserStats(stats);
         } catch (err) {
         }
 
@@ -183,30 +225,52 @@ export default function ProfilePage() {
   const followersCount = activityStats?.followers || profile?.stats?.followers || 0;
 
   const bmi = useMemo(() => {
-    const w = Number(personalInfo?.weight_kg ?? editedStats.weight);
-    const h = Number(personalInfo?.height_cm ?? editedStats.height);
+    const w = Number(personalInfo?.weight_kg ?? userStats?.weight_kg ?? editedStats.weight);
+    const h = Number(personalInfo?.height_cm ?? userStats?.height_cm ?? editedStats.height);
     if (!w || !h) return '';
     const m = h / 100;
     return (w / (m * m)).toFixed(1);
-  }, [personalInfo, editedStats]);
+  }, [personalInfo, userStats, editedStats]);
 
   const handleSaveStats = async () => {
     if (isSavingStats) return;
     try {
       setIsSavingStats(true);
-      const weight = editedStats.weight === '' ? 0 : parseFloat(String(editedStats.weight)) || 0;
-      const height = editedStats.height === '' ? 0 : parseInt(String(editedStats.height)) || 0;
-      const age = editedStats.age === '' ? 0 : parseInt(String(editedStats.age)) || 0;
+      const weight = editedStats.weight === '' ? undefined : parseFloat(String(editedStats.weight));
+      const height = editedStats.height === '' ? undefined : parseFloat(String(editedStats.height));
+      const age = editedStats.age === '' ? undefined : parseInt(String(editedStats.age));
+      const bodyFat = editedStats.body_fat_percentage === '' ? undefined : parseFloat(String(editedStats.body_fat_percentage));
+      const targetWeight = editedStats.target_weight_kg === '' ? undefined : parseFloat(String(editedStats.target_weight_kg));
+      // Only include recorded_at if provided, otherwise backend will use current date
+      const recordedAt = editedStats.recorded_at === '' ? undefined : new Date(editedStats.recorded_at).toISOString();
 
-      const data = {
-        weight_kg: weight,
-        height_cm: height,
-        age: age,
-      };
+      // Update personal info (age, weight, height, body_fat_percentage)
+      const personalData: any = {};
+      if (age !== undefined) personalData.age = age;
+      if (weight !== undefined) personalData.weight_kg = weight;
+      if (height !== undefined) personalData.height_cm = height;
+      if (bodyFat !== undefined) personalData.body_fat_percentage = bodyFat;
 
-      await profileApi.updatePersonalInfo(data);
-      const updatedInfo = await profileApi.getPersonalInfo();
-      setPersonalInfo(updatedInfo);
+      if (Object.keys(personalData).length > 0) {
+        await profileApi.updatePersonalInfo(personalData);
+        const updatedInfo = await profileApi.getPersonalInfo();
+        setPersonalInfo(updatedInfo);
+      }
+
+      // Update user stats (creates new historical entry)
+      const statsData: any = {};
+      if (height !== undefined) statsData.height_cm = height;
+      if (weight !== undefined) statsData.weight_kg = weight;
+      if (bodyFat !== undefined) statsData.body_fat_percentage = bodyFat;
+      if (targetWeight !== undefined) statsData.target_weight_kg = targetWeight;
+      if (recordedAt !== undefined) statsData.recorded_at = recordedAt;
+
+      if (Object.keys(statsData).length > 0) {
+        await profileApi.updateUserStats(statsData);
+        const updatedStats = await profileApi.getUserStats();
+        setUserStats(updatedStats);
+      }
+
       setIsEditStatsDialogOpen(false);
     } catch (err: any) {
       const errorMessage = err?.response?.data?.error?.message || err?.message || t('errors.saveError');
@@ -217,10 +281,25 @@ export default function ProfilePage() {
   };
 
   const handleOpenEditStats = () => {
+    // Format recorded_at for datetime-local input (YYYY-MM-DDTHH:mm)
+    let recordedAtFormatted = '';
+    if (userStats?.recorded_at) {
+      const date = new Date(userStats.recorded_at);
+      const year = date.getFullYear();
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const day = String(date.getDate()).padStart(2, '0');
+      const hours = String(date.getHours()).padStart(2, '0');
+      const minutes = String(date.getMinutes()).padStart(2, '0');
+      recordedAtFormatted = `${year}-${month}-${day}T${hours}:${minutes}`;
+    }
+    
     setEditedStats({
-      weight: personalInfo?.weight_kg ? String(personalInfo.weight_kg) : '',
-      height: personalInfo?.height_cm ? String(personalInfo.height_cm) : '',
+      weight: personalInfo?.weight_kg ? String(personalInfo.weight_kg) : (userStats?.weight_kg ? String(userStats.weight_kg) : ''),
+      height: personalInfo?.height_cm ? String(personalInfo.height_cm) : (userStats?.height_cm ? String(userStats.height_cm) : ''),
       age: personalInfo?.age ? String(personalInfo.age) : '',
+      body_fat_percentage: personalInfo?.body_fat_percentage ? String(personalInfo.body_fat_percentage) : (userStats?.body_fat_percentage ? String(userStats.body_fat_percentage) : ''),
+      target_weight_kg: userStats?.target_weight_kg ? String(userStats.target_weight_kg) : '',
+      recorded_at: recordedAtFormatted,
     });
     setIsEditStatsDialogOpen(true);
   };
@@ -251,6 +330,12 @@ export default function ProfilePage() {
       primary_goal: fitnessProfile?.primary_goal || '',
       experience_level: fitnessProfile?.experience_level || 'beginner',
       workout_frequency: fitnessProfile?.workout_frequency ? String(fitnessProfile.workout_frequency) : '',
+      preferred_workout_duration: fitnessProfile?.preferred_workout_duration ? String(fitnessProfile.preferred_workout_duration) : '',
+      available_equipment: fitnessProfile?.available_equipment || [],
+      injury_history: fitnessProfile?.injury_history || [],
+      medical_restrictions: fitnessProfile?.medical_restrictions || [],
+      fitness_goals_timeline: fitnessProfile?.fitness_goals_timeline || '',
+      motivation_level: fitnessProfile?.motivation_level ? String(fitnessProfile.motivation_level) : '',
     });
     setIsEditFitnessDialogOpen(true);
   };
@@ -282,6 +367,12 @@ export default function ProfilePage() {
         primary_goal: editedFitness.primary_goal,
         experience_level: editedFitness.experience_level,
         workout_frequency: editedFitness.workout_frequency ? parseInt(editedFitness.workout_frequency) : undefined,
+        preferred_workout_duration: editedFitness.preferred_workout_duration ? parseInt(editedFitness.preferred_workout_duration) : undefined,
+        available_equipment: editedFitness.available_equipment,
+        injury_history: editedFitness.injury_history,
+        medical_restrictions: editedFitness.medical_restrictions,
+        fitness_goals_timeline: editedFitness.fitness_goals_timeline,
+        motivation_level: editedFitness.motivation_level ? parseInt(editedFitness.motivation_level) : undefined,
       };
       await profileApi.updateFitnessProfile(data);
       const updatedFitness = await profileApi.getFitnessProfile();
@@ -295,6 +386,47 @@ export default function ProfilePage() {
     }
   };
 
+  const handleOpenEditDietary = () => {
+    setEditedDietary({
+      dietary_restrictions: dietaryPreferences?.dietary_restrictions || [],
+      allergies: dietaryPreferences?.allergies || [],
+      preferred_cuisines: dietaryPreferences?.preferred_cuisines || [],
+      disliked_foods: dietaryPreferences?.disliked_foods || [],
+      daily_calorie_target: dietaryPreferences?.daily_calorie_target ? String(dietaryPreferences.daily_calorie_target) : '',
+      protein_target_percentage: dietaryPreferences?.protein_target_percentage ? String(dietaryPreferences.protein_target_percentage) : '',
+      carb_target_percentage: dietaryPreferences?.carb_target_percentage ? String(dietaryPreferences.carb_target_percentage) : '',
+      fat_target_percentage: dietaryPreferences?.fat_target_percentage ? String(dietaryPreferences.fat_target_percentage) : '',
+      meal_preferences: dietaryPreferences?.meal_preferences || '',
+    });
+    setIsEditDietaryDialogOpen(true);
+  };
+
+  const handleSaveDietary = async () => {
+    if (isSavingDietary) return;
+    try {
+      setIsSavingDietary(true);
+      const data = {
+        dietary_restrictions: editedDietary.dietary_restrictions,
+        allergies: editedDietary.allergies,
+        preferred_cuisines: editedDietary.preferred_cuisines,
+        disliked_foods: editedDietary.disliked_foods,
+        daily_calorie_target: editedDietary.daily_calorie_target ? parseInt(editedDietary.daily_calorie_target) : undefined,
+        protein_target_percentage: editedDietary.protein_target_percentage ? parseFloat(editedDietary.protein_target_percentage) : undefined,
+        carb_target_percentage: editedDietary.carb_target_percentage ? parseFloat(editedDietary.carb_target_percentage) : undefined,
+        fat_target_percentage: editedDietary.fat_target_percentage ? parseFloat(editedDietary.fat_target_percentage) : undefined,
+        meal_preferences: editedDietary.meal_preferences,
+      };
+      await profileApi.updateDietaryPreferences(data);
+      const updatedDietary = await profileApi.getDietaryPreferences();
+      setDietaryPreferences(updatedDietary);
+      setIsEditDietaryDialogOpen(false);
+    } catch (err: any) {
+      const errorMessage = err?.response?.data?.error?.message || err?.message || 'Failed to save dietary preferences';
+      setErrorDialog({ open: true, message: errorMessage });
+    } finally {
+      setIsSavingDietary(false);
+    }
+  };
 
   return (
     <Fragment>
@@ -376,7 +508,7 @@ export default function ProfilePage() {
               <div className="flex items-center justify-between">
                 <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
                   <TrendingUp className="h-5 w-5 text-emerald-500" />
-                  {t('profile.physicalStats')}
+                  User Statistics
                 </CardTitle>
                 <Button variant="ghost" size="sm" onClick={handleOpenEditStats} className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10">
                   <Edit className="h-4 w-4 mr-1" />
@@ -386,21 +518,39 @@ export default function ProfilePage() {
             </CardHeader>
             <CardContent className="space-y-3">
               <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">{t('profile.weight')}</span>
-                <span className="text-slate-900 dark:text-white">{personalInfo?.weight_kg ?? '—'} kg</span>
+                <span className="text-slate-600 dark:text-slate-400">{t('profile.age')}</span>
+                <span className="text-slate-900 dark:text-white">{personalInfo?.age ?? (userStats?.age ? userStats.age : '—')}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600 dark:text-slate-400">{t('profile.height')}</span>
-                <span className="text-slate-900 dark:text-white">{personalInfo?.height_cm ?? '—'} cm</span>
+                <span className="text-slate-900 dark:text-white">{personalInfo?.height_cm ?? (userStats?.height_cm ? `${userStats.height_cm} cm` : '—')}</span>
               </div>
               <div className="flex justify-between">
-                <span className="text-slate-600 dark:text-slate-400">{t('profile.age')}</span>
-                <span className="text-slate-900 dark:text-white">{personalInfo?.age ?? '—'}</span>
+                <span className="text-slate-600 dark:text-slate-400">{t('profile.weight')}</span>
+                <span className="text-slate-900 dark:text-white">{personalInfo?.weight_kg ?? (userStats?.weight_kg ? `${userStats.weight_kg} kg` : '—')}</span>
               </div>
               <div className="flex justify-between">
                 <span className="text-slate-600 dark:text-slate-400">BMI</span>
                 <span className="text-slate-900 dark:text-white">{bmi || '—'}</span>
               </div>
+              {userStats?.body_fat_percentage && (
+                <div className="flex justify-between">
+                  <span className="text-slate-600 dark:text-slate-400">Body Fat %</span>
+                  <span className="text-slate-900 dark:text-white">{userStats.body_fat_percentage}%</span>
+                </div>
+              )}
+              {userStats?.target_weight_kg && (
+                <div className="flex justify-between">
+                  <span className="text-slate-600 dark:text-slate-400">Target Weight</span>
+                  <span className="text-slate-900 dark:text-white">{userStats.target_weight_kg} kg</span>
+                </div>
+              )}
+              {userStats?.recorded_at && (
+                <div className="flex justify-between">
+                  <span className="text-slate-600 dark:text-slate-400">Last Recorded</span>
+                  <span className="text-slate-900 dark:text-white">{new Date(userStats.recorded_at).toLocaleDateString()}</span>
+                </div>
+              )}
             </CardContent>
           </Card>
 
@@ -507,6 +657,42 @@ export default function ProfilePage() {
                     <span className="text-slate-900 dark:text-white">{fitnessProfile.workout_frequency} {t('common.days')}/{t('common.week')}</span>
                   </div>
                 )}
+                {fitnessProfile.preferred_workout_duration && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Preferred Workout Duration</span>
+                    <span className="text-slate-900 dark:text-white">{fitnessProfile.preferred_workout_duration} minutes</span>
+                  </div>
+                )}
+                {fitnessProfile.fitness_goals_timeline && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Goals Timeline</span>
+                    <span className="text-slate-900 dark:text-white">{fitnessProfile.fitness_goals_timeline}</span>
+                  </div>
+                )}
+                {fitnessProfile.motivation_level && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Motivation Level</span>
+                    <span className="text-slate-900 dark:text-white">{fitnessProfile.motivation_level}/10</span>
+                  </div>
+                )}
+                {fitnessProfile.available_equipment && fitnessProfile.available_equipment.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Available Equipment</span>
+                    <span className="text-slate-900 dark:text-white">{fitnessProfile.available_equipment.join(', ')}</span>
+                  </div>
+                )}
+                {fitnessProfile.injury_history && fitnessProfile.injury_history.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Injury History</span>
+                    <span className="text-slate-900 dark:text-white">{fitnessProfile.injury_history.join(', ')}</span>
+                  </div>
+                )}
+                {fitnessProfile.medical_restrictions && fitnessProfile.medical_restrictions.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Medical Restrictions</span>
+                    <span className="text-slate-900 dark:text-white">{fitnessProfile.medical_restrictions.join(', ')}</span>
+                  </div>
+                )}
               </>
             ) : (
               <p className="text-slate-600 dark:text-slate-400 text-center py-4">
@@ -515,6 +701,69 @@ export default function ProfilePage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Dietary Preferences Section */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+                <Calendar className="h-5 w-5 text-orange-500" />
+                Dietary Preferences
+              </CardTitle>
+              <Button variant="ghost" size="sm" onClick={handleOpenEditDietary} className="text-emerald-500 hover:text-emerald-600 hover:bg-emerald-500/10">
+                <Edit className="h-4 w-4 mr-1" />
+                {dietaryPreferences ? t('common.edit') : t('common.setup')}
+              </Button>
+            </div>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {dietaryPreferences ? (
+              <>
+                {dietaryPreferences.daily_calorie_target && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Daily Calorie Target</span>
+                    <span className="text-slate-900 dark:text-white">{dietaryPreferences.daily_calorie_target} kcal</span>
+                  </div>
+                )}
+                {dietaryPreferences.protein_target_percentage && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Protein Target</span>
+                    <span className="text-slate-900 dark:text-white">{dietaryPreferences.protein_target_percentage}%</span>
+                  </div>
+                )}
+                {dietaryPreferences.carb_target_percentage && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Carb Target</span>
+                    <span className="text-slate-900 dark:text-white">{dietaryPreferences.carb_target_percentage}%</span>
+                  </div>
+                )}
+                {dietaryPreferences.fat_target_percentage && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Fat Target</span>
+                    <span className="text-slate-900 dark:text-white">{dietaryPreferences.fat_target_percentage}%</span>
+                  </div>
+                )}
+                {dietaryPreferences.dietary_restrictions && dietaryPreferences.dietary_restrictions.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Dietary Restrictions</span>
+                    <span className="text-slate-900 dark:text-white">{dietaryPreferences.dietary_restrictions.join(', ')}</span>
+                  </div>
+                )}
+                {dietaryPreferences.allergies && dietaryPreferences.allergies.length > 0 && (
+                  <div className="flex justify-between">
+                    <span className="text-slate-600 dark:text-slate-400">Allergies</span>
+                    <span className="text-slate-900 dark:text-white">{dietaryPreferences.allergies.join(', ')}</span>
+                  </div>
+                )}
+              </>
+            ) : (
+              <p className="text-slate-600 dark:text-slate-400 text-center py-4">
+                No dietary preferences set up yet
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
       </div>
 
       {/* Bio Edit Dialog */}
@@ -604,6 +853,43 @@ export default function ProfilePage() {
                 className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
               />
             </div>
+            <div className="space-y-2">
+              <Label htmlFor="preferred_workout_duration" className="text-slate-900 dark:text-white">Preferred Workout Duration (minutes)</Label>
+              <Input
+                id="preferred_workout_duration"
+                type="number"
+                min="1"
+                max="300"
+                value={editedFitness.preferred_workout_duration}
+                onChange={(e) => setEditedFitness({ ...editedFitness, preferred_workout_duration: e.target.value })}
+                placeholder="e.g., 60"
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fitness_goals_timeline" className="text-slate-900 dark:text-white">Fitness Goals Timeline</Label>
+              <Input
+                id="fitness_goals_timeline"
+                type="text"
+                value={editedFitness.fitness_goals_timeline}
+                onChange={(e) => setEditedFitness({ ...editedFitness, fitness_goals_timeline: e.target.value })}
+                placeholder="e.g., 6 months"
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="motivation_level" className="text-slate-900 dark:text-white">Motivation Level (1-10)</Label>
+              <Input
+                id="motivation_level"
+                type="number"
+                min="1"
+                max="10"
+                value={editedFitness.motivation_level}
+                onChange={(e) => setEditedFitness({ ...editedFitness, motivation_level: e.target.value })}
+                placeholder="e.g., 8"
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
           </div>
           <DialogFooter>
             <Button
@@ -629,15 +915,46 @@ export default function ProfilePage() {
       <Dialog open={isEditStatsDialogOpen} onOpenChange={setIsEditStatsDialogOpen}>
         <DialogContent className="sm:max-w-[425px] bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
           <DialogHeader>
-            <DialogTitle className="text-slate-900 dark:text-white">{t('profile.updatePhysicalStats')}</DialogTitle>
+            <DialogTitle className="text-slate-900 dark:text-white">Update User Statistics</DialogTitle>
             <DialogDescription className="text-slate-600 dark:text-slate-400">
-              {t('profile.physicalStatsDescription')}
+              Update your physical statistics and goals
             </DialogDescription>
           </DialogHeader>
 
-          <div className="space-y-4 py-4">
+          <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto">
             <div className="space-y-2">
-              <Label htmlFor="weight" className="text-slate-900 dark:text-white">{t('profile.weight')}</Label>
+              <Label htmlFor="age" className="text-slate-900 dark:text-white">{t('profile.age')}</Label>
+              <Input
+                id="age"
+                type="number"
+                min="13"
+                max="120"
+                value={editedStats.age}
+                onChange={(e) => {
+                  setEditedStats({ ...editedStats, age: e.target.value });
+                }}
+                placeholder="0"
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="height" className="text-slate-900 dark:text-white">{t('profile.height')} (cm)</Label>
+              <Input
+                id="height"
+                type="number"
+                step="0.1"
+                min="1"
+                max="300"
+                value={editedStats.height}
+                onChange={(e) => {
+                  setEditedStats({ ...editedStats, height: e.target.value });
+                }}
+                placeholder="0"
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="weight" className="text-slate-900 dark:text-white">{t('profile.weight')} (kg)</Label>
               <Input
                 id="weight"
                 type="number"
@@ -653,34 +970,49 @@ export default function ProfilePage() {
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="height" className="text-slate-900 dark:text-white">{t('profile.height')}</Label>
+              <Label htmlFor="body_fat_percentage" className="text-slate-900 dark:text-white">Body Fat Percentage</Label>
               <Input
-                id="height"
+                id="body_fat_percentage"
                 type="number"
-                min="1"
-                max="300"
-                value={editedStats.height}
+                step="0.1"
+                min="0"
+                max="100"
+                value={editedStats.body_fat_percentage}
                 onChange={(e) => {
-                  setEditedStats({ ...editedStats, height: e.target.value });
+                  setEditedStats({ ...editedStats, body_fat_percentage: e.target.value });
                 }}
-                placeholder="0"
+                placeholder="0.0"
                 className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
               />
             </div>
             <div className="space-y-2">
-              <Label htmlFor="age" className="text-slate-900 dark:text-white">{t('profile.age')}</Label>
+              <Label htmlFor="target_weight_kg" className="text-slate-900 dark:text-white">Target Weight (kg)</Label>
               <Input
-                id="age"
+                id="target_weight_kg"
                 type="number"
-                min="13"
-                max="120"
-                value={editedStats.age}
+                step="0.1"
+                min="0"
+                max="500"
+                value={editedStats.target_weight_kg}
                 onChange={(e) => {
-                  setEditedStats({ ...editedStats, age: e.target.value });
+                  setEditedStats({ ...editedStats, target_weight_kg: e.target.value });
                 }}
-                placeholder="0"
+                placeholder="0.0"
                 className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
               />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="recorded_at" className="text-slate-900 dark:text-white">Recorded At</Label>
+              <Input
+                id="recorded_at"
+                type="datetime-local"
+                value={editedStats.recorded_at}
+                onChange={(e) => {
+                  setEditedStats({ ...editedStats, recorded_at: e.target.value });
+                }}
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+              <p className="text-xs text-slate-500 dark:text-slate-400">Leave empty to use current date and time</p>
             </div>
             {editedStats.weight && editedStats.height && Number(editedStats.weight) > 0 && Number(editedStats.height) > 0 && (
               <div className="p-4 bg-emerald-500/10 dark:bg-emerald-500/20 rounded-lg border border-emerald-500/30">
@@ -709,6 +1041,102 @@ export default function ProfilePage() {
               className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white disabled:opacity-50 disabled:cursor-not-allowed"
             >
               {isSavingStats ? t('common.loading') : t('profile.saveStats')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dietary Preferences Edit Dialog */}
+      <Dialog open={isEditDietaryDialogOpen} onOpenChange={setIsEditDietaryDialogOpen}>
+        <DialogContent className="sm:max-w-[500px] bg-white dark:bg-slate-800 border-slate-200 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle className="text-slate-900 dark:text-white">Edit Dietary Preferences</DialogTitle>
+            <DialogDescription className="text-slate-600 dark:text-slate-400">
+              Update your dietary preferences and nutritional targets
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto">
+            <div className="space-y-2">
+              <Label htmlFor="daily_calorie_target" className="text-slate-900 dark:text-white">Daily Calorie Target</Label>
+              <Input
+                id="daily_calorie_target"
+                type="number"
+                min="1"
+                max="10000"
+                value={editedDietary.daily_calorie_target}
+                onChange={(e) => setEditedDietary({ ...editedDietary, daily_calorie_target: e.target.value })}
+                placeholder="e.g., 2500"
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="protein_target_percentage" className="text-slate-900 dark:text-white">Protein Target (%)</Label>
+              <Input
+                id="protein_target_percentage"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={editedDietary.protein_target_percentage}
+                onChange={(e) => setEditedDietary({ ...editedDietary, protein_target_percentage: e.target.value })}
+                placeholder="e.g., 30"
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="carb_target_percentage" className="text-slate-900 dark:text-white">Carb Target (%)</Label>
+              <Input
+                id="carb_target_percentage"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={editedDietary.carb_target_percentage}
+                onChange={(e) => setEditedDietary({ ...editedDietary, carb_target_percentage: e.target.value })}
+                placeholder="e.g., 40"
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fat_target_percentage" className="text-slate-900 dark:text-white">Fat Target (%)</Label>
+              <Input
+                id="fat_target_percentage"
+                type="number"
+                min="0"
+                max="100"
+                step="0.1"
+                value={editedDietary.fat_target_percentage}
+                onChange={(e) => setEditedDietary({ ...editedDietary, fat_target_percentage: e.target.value })}
+                placeholder="e.g., 30"
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="meal_preferences" className="text-slate-900 dark:text-white">Meal Preferences</Label>
+              <Textarea
+                id="meal_preferences"
+                value={editedDietary.meal_preferences}
+                onChange={(e) => setEditedDietary({ ...editedDietary, meal_preferences: e.target.value })}
+                placeholder="Describe your meal preferences..."
+                className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button
+              variant="outline"
+              onClick={() => setIsEditDietaryDialogOpen(false)}
+              disabled={isSavingDietary}
+              className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300"
+            >
+              {t('common.cancel')}
+            </Button>
+            <Button
+              onClick={handleSaveDietary}
+              disabled={isSavingDietary}
+              className="bg-gradient-to-r from-emerald-500 to-emerald-600 hover:from-emerald-600 hover:to-emerald-700 text-white"
+            >
+              {isSavingDietary ? t('common.saving') : t('common.save')}
             </Button>
           </DialogFooter>
         </DialogContent>

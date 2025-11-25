@@ -24,16 +24,31 @@ export default function LanguageToggle() {
 
       // Store language preference in localStorage
       if (typeof window !== 'undefined') {
-        localStorage.setItem('language', langCode);
+        try {
+          localStorage.setItem('language', langCode);
+        } catch (error) {
+          // localStorage may be disabled or full in some browsers
+          console.warn('Failed to save language preference to localStorage:', error);
+        }
       }
 
       // Update language preference in backend (only if user is authenticated)
       try {
         // Check if user is authenticated by checking for auth token
-        const hasAuth = typeof window !== 'undefined' && 
-          (localStorage.getItem('gp_access_token') || 
-           document.cookie.includes('gp_access_token') ||
-           document.cookie.includes('access_token'));
+        let hasAuth = false;
+        if (typeof window !== 'undefined') {
+          try {
+            hasAuth = !!(
+              localStorage.getItem('gp_access_token') || 
+              document.cookie.includes('gp_access_token') ||
+              document.cookie.includes('access_token')
+            );
+          } catch (error) {
+            // Fallback to cookie check only if localStorage fails
+            hasAuth = document.cookie.includes('gp_access_token') || 
+                     document.cookie.includes('access_token');
+          }
+        }
         
         if (hasAuth) {
           await settingsApi.updateSettings({ language: langCode });

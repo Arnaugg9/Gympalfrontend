@@ -98,28 +98,39 @@ export default function WorkoutCreatePage() {
   }, []);
 
   // --- Persistence Effects: Save form data to localStorage on change ---
+  // Safe localStorage helper with error handling for browser compatibility
+  const safeSetItem = (key: string, value: string) => {
+    try {
+      if (typeof window !== 'undefined' && window.localStorage) {
+        localStorage.setItem(key, value);
+      }
+    } catch (error) {
+      // localStorage may be disabled or full in some browsers
+      console.warn(`Failed to save to localStorage (${key}):`, error);
+    }
+  };
 
   useEffect(() => {
-    if (isInitialized) localStorage.setItem('workoutFormName', workoutName);
+    if (isInitialized) safeSetItem('workoutFormName', workoutName);
   }, [workoutName, isInitialized]);
 
   useEffect(() => {
-    if (isInitialized) localStorage.setItem('workoutFormDescription', description);
+    if (isInitialized) safeSetItem('workoutFormDescription', description);
   }, [description, isInitialized]);
 
   useEffect(() => {
     if (isInitialized) {
-      localStorage.setItem('workoutFormDifficulty', difficulty);
-      localStorage.setItem('workoutFormType', workoutType);
-      localStorage.setItem('workoutFormDays', daysPerWeek);
-      localStorage.setItem('workoutFormNotes', userNotes);
-      localStorage.setItem('workoutFormIsPublic', isPublic.toString());
+      safeSetItem('workoutFormDifficulty', difficulty);
+      safeSetItem('workoutFormType', workoutType);
+      safeSetItem('workoutFormDays', daysPerWeek);
+      safeSetItem('workoutFormNotes', userNotes);
+      safeSetItem('workoutFormIsPublic', isPublic.toString());
     }
   }, [difficulty, workoutType, daysPerWeek, userNotes, isPublic, isInitialized]);
 
   useEffect(() => {
     if (isInitialized) {
-      localStorage.setItem('workoutFormExercises', JSON.stringify(selectedExercises));
+      safeSetItem('workoutFormExercises', JSON.stringify(selectedExercises));
     }
   }, [selectedExercises, isInitialized]);
 

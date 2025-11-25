@@ -74,53 +74,70 @@ export default function AIChatPage() {
 
   /**
    * Initialize Speech Recognition on component mount
+   * Supports multiple browser implementations:
+   * - Chrome/Edge: webkitSpeechRecognition
+   * - Safari: webkitSpeechRecognition
+   * - Firefox: Not natively supported (will show appropriate message)
    */
   useEffect(() => {
-    if (typeof window !== 'undefined' && (window as any).webkitSpeechRecognition) {
-      const SpeechRecognition = (window as any).webkitSpeechRecognition;
-      recognitionRef.current = new SpeechRecognition();
-      recognitionRef.current.continuous = true;
-      recognitionRef.current.interimResults = true;
-      recognitionRef.current.lang = 'es-ES'; // Default to Spanish as per context
+    if (typeof window === 'undefined') return;
 
-      recognitionRef.current.onresult = (event: any) => {
-        let finalTranscript = '';
+    // Try to get Speech Recognition API (Chrome, Edge, Safari)
+    const SpeechRecognition = 
+      (window as any).SpeechRecognition || 
+      (window as any).webkitSpeechRecognition ||
+      (window as any).mozSpeechRecognition ||
+      (window as any).msSpeechRecognition;
 
-        for (let i = event.resultIndex; i < event.results.length; ++i) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
+    if (SpeechRecognition) {
+      try {
+        recognitionRef.current = new SpeechRecognition();
+        recognitionRef.current.continuous = true;
+        recognitionRef.current.interimResults = true;
+        recognitionRef.current.lang = locale; // Use current locale
+
+        recognitionRef.current.onresult = (event: any) => {
+          let finalTranscript = '';
+
+          for (let i = event.resultIndex; i < event.results.length; ++i) {
+            if (event.results[i].isFinal) {
+              finalTranscript += event.results[i][0].transcript;
+            }
           }
-        }
-        
-        // Append final transcript to input
-        if (finalTranscript) {
-            setInput(prev => {
-                const space = prev.length > 0 && !prev.endsWith(' ') ? ' ' : '';
-                return prev + space + finalTranscript;
-            });
-        }
-      };
+          
+          // Append final transcript to input
+          if (finalTranscript) {
+              setInput(prev => {
+                  const space = prev.length > 0 && !prev.endsWith(' ') ? ' ' : '';
+                  return prev + space + finalTranscript;
+              });
+          }
+        };
 
-      recognitionRef.current.onerror = (event: any) => {
-        console.error('Speech recognition error', event.error);
-        setIsRecording(false);
-        
-        if (event.error === 'not-allowed') {
-            toast.error('Microphone access denied. Please check your permissions.');
-        } else if (event.error === 'no-speech') {
-            // Ignore no-speech errors, often just means silence
-        } else if (event.error === 'audio-capture') {
-            toast.error('No microphone found or audio capture failed.');
-        } else {
-            toast.error(`Voice recognition error: ${event.error}`);
-        }
-      };
+        recognitionRef.current.onerror = (event: any) => {
+          console.error('Speech recognition error', event.error);
+          setIsRecording(false);
+          
+          if (event.error === 'not-allowed') {
+              toast.error(t('aiChat.micPermissionDenied', { defaultValue: 'Microphone access denied. Please check your permissions.' }));
+          } else if (event.error === 'no-speech') {
+              // Ignore no-speech errors, often just means silence
+          } else if (event.error === 'audio-capture') {
+              toast.error(t('aiChat.noMicrophone', { defaultValue: 'No microphone found or audio capture failed.' }));
+          } else {
+              toast.error(t('aiChat.voiceError', { defaultValue: `Voice recognition error: ${event.error}` }));
+          }
+        };
 
-      recognitionRef.current.onend = () => {
-        setIsRecording(false);
-      };
+        recognitionRef.current.onend = () => {
+          setIsRecording(false);
+        };
+      } catch (error) {
+        console.error('Failed to initialize Speech Recognition:', error);
+        recognitionRef.current = null;
+      }
     }
-  }, []);
+  }, [locale, t]);
 
   useEffect(() => {
     if (typeof window === 'undefined') return;
@@ -137,15 +154,37 @@ export default function AIChatPage() {
    */
   const toggleRecording = async () => {
     if (!recognitionRef.current) {
-      toast.error('Speech recognition not supported in this browser.');
+      // Check if it's Firefox or another unsupported browser
+      const isFirefox = typeof navigator !== 'undefined' && 
+        navigator.userAgent.toLowerCase().indexOf('firefox') > -1;
+      
+      if (isFirefox) {
+        toast.error(t('aiChat.firefoxNotSupported', { 
+          defaultValue: 'Speech recognition is not natively supported in Firefox. Please use Chrome, Edge, or Safari for voice input.' 
+        }));
+      } else {
+        toast.error(t('aiChat.speechNotSupported', { 
+          defaultValue: 'Speech recognition is not supported in this browser. Please use a modern browser like Chrome, Edge, or Safari.' 
+        }));
+      }
       return;
     }
 
     if (isRecording) {
-      recognitionRef.current.stop();
-      setIsRecording(false);
+      try {
+        recognitionRef.current.stop();
+        setIsRecording(false);
+      } catch (error) {
+        console.error('Error stopping recognition:', error);
+        setIsRecording(false);
+      }
     } else {
       try {
+        // Check if getUserMedia is available (for better error handling)
+        if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+          throw new Error('getUserMedia not supported');
+        }
+
         // Explicitly request microphone access first to handle permissions/errors better
         const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
         // Stop the stream immediately, we just wanted to check permission/existence
@@ -153,15 +192,19 @@ export default function AIChatPage() {
 
         recognitionRef.current.start();
         setIsRecording(true);
-        toast.success('Listening...');
+        toast.success(t('aiChat.listening', { defaultValue: 'Listening...' }));
       } catch (error: any) {
         console.error('Failed to start recording:', error);
+        setIsRecording(false);
+        
         if (error.name === 'NotAllowedError' || error.name === 'PermissionDeniedError') {
-            toast.error('Microphone permission denied. Please allow access.');
+            toast.error(t('aiChat.micPermissionDenied', { defaultValue: 'Microphone permission denied. Please allow access.' }));
         } else if (error.name === 'NotFoundError' || error.name === 'DevicesNotFoundError') {
-            toast.error('No microphone found on this device.');
+            toast.error(t('aiChat.noMicrophone', { defaultValue: 'No microphone found on this device.' }));
+        } else if (error.name === 'NotSupportedError') {
+            toast.error(t('aiChat.micNotSupported', { defaultValue: 'Microphone access is not supported in this browser.' }));
         } else {
-            toast.error('Could not access microphone.');
+            toast.error(t('aiChat.micAccessError', { defaultValue: 'Could not access microphone.' }));
         }
       }
     }
@@ -605,11 +648,11 @@ export default function AIChatPage() {
         <Card className="w-full xl:w-80 flex flex-col bg-white/80 dark:bg-slate-900/70 border border-white/10 dark:border-slate-700/60 backdrop-blur-xl shadow-xl">
           <div className="p-4 border-b border-white/20 dark:border-slate-800/60 shrink-0 flex items-center gap-2">
             <div className="flex flex-1 items-center gap-2">
-              <Button 
-                onClick={handleCreateNewChat}
+            <Button 
+              onClick={handleCreateNewChat}
                 className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
-              >
-                <Plus className="h-4 w-4 mr-2" />
+            >
+              <Plus className="h-4 w-4 mr-2" />
                 {t('aiChat.newChat')}
               </Button>
             </div>
@@ -626,32 +669,32 @@ export default function AIChatPage() {
           <div className="flex-1 min-h-0">
               <ScrollArea className="h-full">
               <div className="p-2 space-y-2">
-                {conversations.map((conv) => (
-                  <div
-                    key={conv.id}
-                    onClick={() => handleSelectConversation(conv.id)}
+              {conversations.map((conv) => (
+                <div
+                  key={conv.id}
+                  onClick={() => handleSelectConversation(conv.id)}
                     className={`flex items-center justify-between p-3 rounded-2xl cursor-pointer transition-all border ${
-                      currentConversationId === conv.id
+                    currentConversationId === conv.id
                         ? 'bg-purple-500/10 border-purple-400 text-purple-800 dark:text-purple-200'
                         : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300'
-                    }`}
-                  >
-                    <div className="flex items-center gap-3 overflow-hidden">
+                  }`}
+                >
+                  <div className="flex items-center gap-3 overflow-hidden">
                       <div className="h-8 w-8 rounded-full bg-purple-500/15 flex items-center justify-center">
                         <MessageSquare className="h-4 w-4 text-purple-500" />
                       </div>
-                      <div className="flex flex-col overflow-hidden">
+                    <div className="flex flex-col overflow-hidden">
                         <span className="truncate text-sm font-medium">{conv.title || t('aiChat.untitledChat')}</span>
-                        <span className="text-xs text-slate-500 dark:text-slate-500">
+                      <span className="text-xs text-slate-500 dark:text-slate-500">
                           {new Intl.DateTimeFormat(locale, {
                             month: 'short',
                             day: 'numeric',
                             hour: '2-digit',
                             minute: '2-digit'
                           }).format(new Date(conv.created_at))}
-                        </span>
-                      </div>
+                      </span>
                     </div>
+                  </div>
                     <div className="flex items-center gap-1">
                       <Button
                         variant="ghost"
@@ -662,25 +705,25 @@ export default function AIChatPage() {
                       >
                         <Pencil className="h-3 w-3" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
+                  <Button
+                    variant="ghost"
+                    size="icon"
                         className="h-6 w-6 text-slate-400 hover:text-red-500"
-                        onClick={(e) => handleDeleteChat(e, conv.id)}
+                    onClick={(e) => handleDeleteChat(e, conv.id)}
                         title={t('aiChat.deleteChat', { defaultValue: 'Delete chat' })}
-                      >
-                        <Trash2 className="h-3 w-3" />
-                      </Button>
+                  >
+                    <Trash2 className="h-3 w-3" />
+                  </Button>
                     </div>
-                  </div>
-                ))}
-                {conversations.length === 0 && (
-                  <div className="text-center p-4 text-slate-500 text-sm">
+                </div>
+              ))}
+              {conversations.length === 0 && (
+                <div className="text-center p-4 text-slate-500 text-sm">
                     {t('aiChat.noConversations')}
-                  </div>
-                )}
-              </div>
-            </ScrollArea>
+                </div>
+              )}
+            </div>
+          </ScrollArea>
           </div>
         </Card>
         )}
@@ -722,52 +765,52 @@ export default function AIChatPage() {
                 {messages.map((message, index) => {
                   const isUserMessage = message.role === 'user';
                   return (
-                    <div
-                      key={index}
+                  <div
+                    key={index}
                       className={`flex gap-3 ${isUserMessage ? 'flex-row-reverse' : ''}`}
-                    >
+                  >
                       <Avatar className={isUserMessage ? 'bg-gradient-to-br from-emerald-500 to-teal-500' : 'bg-gradient-to-br from-purple-500 to-pink-500'}>
                         {isUserMessage && userAvatar ? (
                           <AvatarImage src={userAvatar} alt="User avatar" />
-                        ) : null}
-                        <AvatarFallback className="text-white bg-transparent">
+                      ) : null}
+                      <AvatarFallback className="text-white bg-transparent">
                           {isUserMessage ? <User className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div
+                      </AvatarFallback>
+                    </Avatar>
+                    <div
                         className={`rounded-2xl px-4 py-3 max-w-[85%] md:max-w-[70%] text-sm leading-relaxed ${
                           isUserMessage
                             ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30'
                             : 'bg-slate-100/70 dark:bg-slate-800/70 text-slate-900 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700/60'
-                        }`}
-                      >
+                      }`}
+                    >
                         <AiMarkdown content={message.content} className={isUserMessage ? 'text-white' : undefined} />
-                      </div>
                     </div>
+                  </div>
                   );
                 })}
               </div>
-                )}
-              </ScrollArea>
+              )}
+            </ScrollArea>
             </div>
 
             {/* Input */}
             <div className="sticky bottom-0 w-full border-t border-white/30 dark:border-slate-700/60 bg-gradient-to-b from-white/90 to-white dark:from-slate-900/80 dark:to-slate-900/95 backdrop-blur px-4 py-4">
               <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
-                {suggestedPrompts.map((prompt, index) => {
-                  const Icon = prompt.icon;
-                  return (
-                    <button
-                      key={index}
-                      onClick={() => setInput(prompt.text)}
+                  {suggestedPrompts.map((prompt, index) => {
+                    const Icon = prompt.icon;
+                    return (
+                      <button
+                        key={index}
+                        onClick={() => setInput(prompt.text)}
                       className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/80 dark:bg-slate-800/60 border border-white/40 dark:border-slate-700/60 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-sm text-slate-700 dark:text-slate-200 transition-colors"
-                    >
+                      >
                       <Icon className="h-4 w-4 text-purple-500" />
                       <span className="truncate">{prompt.text}</span>
-                    </button>
-                  );
-                })}
-              </div>
+                      </button>
+                    );
+                  })}
+                </div>
               <div className="flex gap-2 items-end">
                 <Button
                   onClick={toggleRecording}

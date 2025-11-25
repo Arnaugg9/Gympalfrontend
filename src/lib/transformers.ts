@@ -302,12 +302,15 @@ export const postTransformers = {
   /**
    * Transform backend PostAuthor to frontend format
    */
-  transformAuthor(author: Unified.PostAuthor): any {
+  transformAuthor(author: Unified.PostAuthor | any): any {
+    // Handle both backend formats: avatar_url (from type) and avatar (from actual response)
+    const avatarValue = (author as any).avatar || author.avatar_url;
     return {
       id: author.id,
       username: author.username,
       fullName: author.full_name,
-      avatarUrl: author.avatar_url,
+      avatar: avatarValue, // Use 'avatar' for consistency with component usage
+      avatarUrl: avatarValue, // Keep both for backward compatibility
     };
   },
 
