@@ -5,6 +5,7 @@ import { useRouter, usePathname } from 'next/navigation';
 import { useAuthStore } from '@/lib/store/auth.store';
 import { getAccessToken, getRefreshToken } from '@/lib/utils/auth';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
+import { me } from '@/features/auth/api/api';
 
 interface AuthProviderProps {
   children: ReactNode;
@@ -56,34 +57,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
         // Try to get user profile to verify token is still valid
         try {
-          const response = await fetch('/api/v1/auth/me', {
-            headers: {
-              'Authorization': `Bearer ${accessToken}`,
-            },
-          });
-
-          if (response.ok) {
-            const data = await response.json();
-            if (data.data) {
-              setUser({
-                id: data.data.id,
-                email: data.data.email,
-                username: data.data.username,
-                full_name: data.data.full_name,
-                avatarUrl: data.data.avatar_url,
-                emailVerified: data.data.email_verified,
-              });
-            }
-          } else if (response.status === 401) {
-            // Token expired or invalid
+          const userData = await me();
+          if (userData) {
+            setUser({
+              id: userData.id,
+              email: userData.email,
+              username: userData.username,
+              full_name: userData.fullName || userData.full_name,
+              avatarUrl: userData.avatarUrl,
+              emailVerified: userData.emailVerified ?? false,
+            });
+          }
+        } catch (error: any) {
+          // If 401, token expired or invalid
+          if (error?.response?.status === 401 || error?.message?.includes('401')) {
             setUser(null);
             setTokens(null, null);
             if (!isPublicRoute) {
               router.push('/login');
             }
           }
-        } catch (error) {
-          // If network error, keep the user logged in
+          // For other errors (network, etc.), keep the user logged in if we have tokens
         }
 
         setLoading(false);
@@ -105,7 +99,13 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   // If we're still loading auth, show spinner (unless on public route)
-  if (!isHydrated && !isPublicRoute) {
+  // For public routes, always allow rendering immediately
+  if (!isHydrated) {
+    if (isPublicRoute) {
+      // On public routes, render children immediately without waiting
+      return <>{children}</>;
+    }
+    // On protected routes, show loading spinner
     return (
       <div className="flex flex-col items-center justify-center min-h-screen gap-4">
         <LoadingSpinner size="lg" variant="dumbbell" />

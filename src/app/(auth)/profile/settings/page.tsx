@@ -6,7 +6,9 @@ import { Button } from '@/components/ui/button';
 import { Label } from '@/components/ui/label';
 import { Switch } from '@/components/ui/switch';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Settings, Bell, Shield, AlertCircle } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Eye, EyeOff } from 'lucide-react';
+import { Settings, Bell, Shield, AlertCircle, Lock } from 'lucide-react';
 import { useTranslation } from 'react-i18next';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
@@ -50,6 +52,15 @@ export default function SettingsPage() {
   const [success, setSuccess] = useState('');
   const [showDeleteWarning, setShowDeleteWarning] = useState(false);
   const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+
+  // Password change state
+  const [currentPassword, setCurrentPassword] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  const [changingPassword, setChangingPassword] = useState(false);
+  const [showCurrentPassword, setShowCurrentPassword] = useState(false);
+  const [showNewPassword, setShowNewPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   // Load settings on mount
   useEffect(() => {
@@ -149,6 +160,61 @@ export default function SettingsPage() {
       setError(err?.message || t('profile.settings.errorSavingPrivacy'));
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleChangePassword = async () => {
+    try {
+      setChangingPassword(true);
+      setError('');
+      setSuccess('');
+
+      // Validation
+      if (!currentPassword) {
+        setError(t('profile.settings.currentPasswordRequired'));
+        setChangingPassword(false);
+        return;
+      }
+
+      if (!newPassword) {
+        setError(t('profile.settings.newPasswordRequired'));
+        setChangingPassword(false);
+        return;
+      }
+
+      if (newPassword.length < 8) {
+        setError(t('profile.settings.passwordTooShort'));
+        setChangingPassword(false);
+        return;
+      }
+
+      if (newPassword !== confirmNewPassword) {
+        setError(t('profile.settings.passwordMismatch'));
+        setChangingPassword(false);
+        return;
+      }
+
+      // Get user ID from auth store
+      const userId = user?.id;
+      
+      if (!userId) {
+        throw new Error(t('profile.settings.errorChangingPassword'));
+      }
+
+      // Call the change password endpoint
+      await settingsApi.changePassword(userId, currentPassword, newPassword);
+
+      // Clear password fields
+      setCurrentPassword('');
+      setNewPassword('');
+      setConfirmNewPassword('');
+
+      setSuccess(t('profile.settings.passwordChanged'));
+      setTimeout(() => setSuccess(''), 3000);
+    } catch (err: any) {
+      setError(err?.message || t('profile.settings.errorChangingPassword'));
+    } finally {
+      setChangingPassword(false);
     }
   };
 
@@ -384,6 +450,106 @@ export default function SettingsPage() {
 
             <Button onClick={handleSavePrivacy} disabled={saving} className="w-full bg-emerald-500 hover:bg-emerald-600 text-white">
               {saving ? t('profile.settings.saving') : t('profile.settings.saveChanges')}
+            </Button>
+          </CardContent>
+        </Card>
+
+        {/* Security Settings */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-slate-900 dark:text-white flex items-center gap-2">
+              <Lock className="h-5 w-5 text-blue-500" />
+              {t('profile.settings.security')}
+            </CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">
+              {t('profile.settings.securityDescription')}
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <Label className="text-slate-900 dark:text-white">{t('profile.settings.currentPassword')}</Label>
+              <div className="relative">
+                <Input
+                  type={showCurrentPassword ? 'text' : 'password'}
+                  value={currentPassword}
+                  onChange={(e) => setCurrentPassword(e.target.value)}
+                  placeholder={t('profile.settings.currentPassword')}
+                  className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => setShowCurrentPassword(!showCurrentPassword)}
+                >
+                  {showCurrentPassword ? (
+                    <EyeOff className="h-4 w-4 text-slate-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-slate-400" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-slate-900 dark:text-white">{t('profile.settings.newPassword')}</Label>
+              <div className="relative">
+                <Input
+                  type={showNewPassword ? 'text' : 'password'}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder={t('profile.settings.newPassword')}
+                  className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => setShowNewPassword(!showNewPassword)}
+                >
+                  {showNewPassword ? (
+                    <EyeOff className="h-4 w-4 text-slate-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-slate-400" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-slate-900 dark:text-white">{t('profile.settings.confirmNewPassword')}</Label>
+              <div className="relative">
+                <Input
+                  type={showConfirmPassword ? 'text' : 'password'}
+                  value={confirmNewPassword}
+                  onChange={(e) => setConfirmNewPassword(e.target.value)}
+                  placeholder={t('profile.settings.confirmNewPassword')}
+                  className="bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white pr-10"
+                />
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="absolute right-2 top-1/2 -translate-y-1/2 h-6 w-6 p-0 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  onClick={() => setShowConfirmPassword(!showConfirmPassword)}
+                >
+                  {showConfirmPassword ? (
+                    <EyeOff className="h-4 w-4 text-slate-400" />
+                  ) : (
+                    <Eye className="h-4 w-4 text-slate-400" />
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleChangePassword} 
+              disabled={changingPassword} 
+              className="w-full bg-emerald-500 hover:bg-emerald-600 text-white"
+            >
+              {changingPassword ? t('profile.settings.saving') : t('profile.settings.changePassword')}
             </Button>
           </CardContent>
         </Card>

@@ -203,6 +203,23 @@ export async function deleteAccount(userId: string) {
 }
 
 /**
+ * Change user password
+ */
+export async function changePassword(userId: string, currentPassword: string, newPassword: string) {
+  apiLogger.info({ endpoint: `/api/v1/auth/change-password/${userId}` }, 'Change password request');
+  try {
+    await http.put<ApiResponse<any>>(`/api/v1/auth/change-password/${userId}`, {
+      currentPassword,
+      newPassword,
+    });
+    apiLogger.info({}, 'Change password success');
+  } catch (err) {
+    logError(err as Error, { endpoint: '/api/v1/auth/change-password' });
+    throw err;
+  }
+}
+
+/**
  * Settings API object for convenience
  */
 export const settingsApi = {
@@ -215,4 +232,5 @@ export const settingsApi = {
   getUserProfile: getUserProfile,
   updateUserProfile: updateUserProfile,
   deleteAccount: deleteAccount,
+  changePassword: changePassword,
 };
