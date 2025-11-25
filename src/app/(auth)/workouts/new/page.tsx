@@ -397,7 +397,7 @@ export default function WorkoutCreatePage() {
                           <span className="text-slate-900 dark:text-white block font-medium">{exercise.name}</span>
                           <span className="text-xs text-slate-500 dark:text-slate-400">
                             {exercise.sets || 3} {t('workouts.sets', { defaultValue: 'sets' })} × {exercise.reps || 10} {t('workouts.reps', { defaultValue: 'reps' })}
-                          </span>
+                        </span>
                         </div>
                       </div>
                       <Button
@@ -436,7 +436,7 @@ export default function WorkoutCreatePage() {
                 <div className="p-4 bg-white/60 dark:bg-slate-800/40 rounded-lg border border-emerald-200/50 dark:border-emerald-500/30">
                   <p className="text-slate-600 dark:text-slate-400 text-sm font-medium mb-2">{t('workouts.estimatedDuration', { defaultValue: 'Estimated Duration' })}</p>
                   <p className="text-slate-900 dark:text-white text-3xl font-bold">{estimatedDuration} <span className="text-lg text-slate-600 dark:text-slate-400">min</span></p>
-                </div>
+              </div>
               </div>
 
               {error && (

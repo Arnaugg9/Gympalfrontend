@@ -27,6 +27,13 @@ import { useTranslation } from 'react-i18next';
 import { MessageCircle } from 'lucide-react';
 import { ImageViewer } from '@/components/shared/ImageViewer';
 
+const resolveLocale = (lang: string) => {
+  if (lang?.startsWith('es')) return 'es-ES';
+  if (lang?.startsWith('ca')) return 'ca-ES';
+  if (lang?.startsWith('fr')) return 'fr-FR';
+  return 'en-US';
+};
+
 /**
  * Post Interface representing a social feed item
  */
@@ -73,7 +80,10 @@ type Comment = {
 };
 
 export default function SocialPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = resolveLocale(i18n.language);
+  const formatDateTime = (value?: string) =>
+    value ? new Intl.DateTimeFormat(locale, { dateStyle: 'medium', timeStyle: 'short' }).format(new Date(value)) : '';
   const [publishModalOpen, setPublishModalOpen] = useState(false);
   const [postContent, setPostContent] = useState('');
   const [posts, setPosts] = useState<Post[]>([]);
@@ -246,18 +256,33 @@ export default function SocialPage() {
           if (post.originalPost.author.isFollowing) {
             followedState[post.originalPost.author.id] = true;
           }
-          if (post.repostedBy?.id === currentUserId) {
+          const userRepostedOriginal =
+            post.repostedBy?.id === currentUserId ||
+            Boolean(
+              (post.originalPost as any)?.isRepostedByCurrentUser ||
+              (post.originalPost as any)?.userHasReposted ||
+              (post.originalPost as any)?.repostedByCurrentUser ||
+              (post.originalPost as any)?.hasReposted
+            );
+          if (userRepostedOriginal && post.originalPost?.id) {
             repostedState[post.originalPost.id] = true;
             initialRepostedState[post.originalPost.id] = true;
           }
         }
       });
-
-      // Mark reposts from the combined items (which now include all reposts from backend)
       combinedItems.forEach((post: Post) => {
-        if (post.isRepost && post.originalPost?.id) {
-          repostedState[post.originalPost.id] = true;
-          initialRepostedState[post.originalPost.id] = true;
+        if (!post.isRepost) {
+          const userHasReposted =
+            Boolean(
+              (post as any)?.isRepostedByCurrentUser ||
+              (post as any)?.userHasReposted ||
+              (post as any)?.repostedByCurrentUser ||
+              (post as any)?.hasReposted
+            );
+          if (userHasReposted) {
+            repostedState[post.id] = true;
+            initialRepostedState[post.id] = true;
+          }
         }
       });
 
@@ -572,12 +597,9 @@ export default function SocialPage() {
         [postId]: [...(prev[postId] || []), mappedComment],
       }));
       setCommentContent((prev) => ({ ...prev, [postId]: '' }));
-      // Refetch posts to update comment count
-      try {
-        const res = await socialApi.posts();
-        const items: Post[] = res?.data && Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
-        setPosts(items);
-      } catch (err) {
+      if (currentUserId) {
+        setPage(1);
+        await loadPosts(1, true);
       }
     } catch (err: any) {
       const msg = err?.message || 'Error posting comment';
@@ -620,12 +642,9 @@ export default function SocialPage() {
       setReplyContent('');
       setReplyingTo(null);
 
-      // Refetch posts to update comment count
-      try {
-        const res = await socialApi.posts();
-        const items: Post[] = res?.data && Array.isArray(res.data) ? res.data : Array.isArray(res) ? res : [];
-        setPosts(items);
-      } catch (err) {
+      if (currentUserId) {
+        setPage(1);
+        await loadPosts(1, true);
       }
     } catch (err: any) {
       const msg = err?.message || 'Error posting reply';
@@ -637,7 +656,7 @@ export default function SocialPage() {
 
   const handleCopyWorkout = async (workoutId: string) => {
     if (!workoutId) {
-      setErrorDialog({ open: true, message: 'Workout ID is missing' });
+      setErrorDialog({ open: true, message: t('errors.generic', { defaultValue: 'Workout ID is missing' }) });
       return;
     }
     setLoading(true);
@@ -647,7 +666,9 @@ export default function SocialPage() {
 
       setErrorDialog({
         open: true,
-        message: `✅ Workout "${copiedWorkout?.name || 'Copied Workout'}" has been copied to your workouts!`
+        message: t('social.copyWorkoutSuccess', {
+          name: copiedWorkout?.name || t('social.workoutNameNotAvailable'),
+        }),
       });
 
       // Optionally redirect to workouts page or refresh
@@ -694,14 +715,14 @@ export default function SocialPage() {
 
       {/* Search and Filter */}
       <div className="space-y-4">
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-          <Input
-            placeholder={t('social.searchPlaceholder')}
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-10 bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
-          />
+      <div className="relative">
+        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+        <Input
+          placeholder={t('social.searchPlaceholder')}
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-10 bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 text-slate-900 dark:text-white"
+        />
         </div>
         
         {/* Sort Filter */}
@@ -709,11 +730,11 @@ export default function SocialPage() {
           <TabsList className="grid w-full max-w-md grid-cols-2 bg-slate-100 dark:bg-slate-800">
             <TabsTrigger value="popular" className="flex items-center gap-2">
               <TrendingUp className="h-4 w-4" />
-              {t('social.popular', { defaultValue: 'Populares' })}
+              {t('social.popular')}
             </TabsTrigger>
             <TabsTrigger value="recent" className="flex items-center gap-2">
               <Clock className="h-4 w-4" />
-              {t('social.recent', { defaultValue: 'Recientes' })}
+              {t('social.recent')}
             </TabsTrigger>
           </TabsList>
         </Tabs>
@@ -744,11 +765,11 @@ export default function SocialPage() {
                       </Avatar>
                       <div>
                         <h3 className="text-slate-900 dark:text-white font-medium">
-                          {post.author?.username || post.author?.fullName || 'Usuario'}
+                          {post.author?.username || post.author?.fullName || t('social.userFallback')}
                         </h3>
                         {post.createdAt && (
                           <p className="text-sm text-slate-500 dark:text-slate-400">
-                            {new Date(post.createdAt).toLocaleString()}
+                          {formatDateTime(post.createdAt)}
                           </p>
                         )}
                       </div>
@@ -873,7 +894,7 @@ export default function SocialPage() {
                           <div className="flex-1">
                             <div className="flex items-center gap-2 mb-1">
                               <span className="text-sm font-medium text-slate-900 dark:text-white">
-                                {comment.author?.username || comment.author?.fullName || 'Usuario'}
+                              {comment.author?.username || comment.author?.fullName || t('social.userFallback')}
                               </span>
                               {/* ... rest of comment rendering ... */}
                               <div className="flex items-center gap-1 ml-auto">
@@ -900,7 +921,7 @@ export default function SocialPage() {
                             <p className="text-sm text-slate-700 dark:text-slate-300">{comment.content}</p>
                             {comment.createdAt && (
                               <span className="text-xs text-slate-500 dark:text-slate-400">
-                                {new Date(comment.createdAt).toLocaleString()}
+                                {formatDateTime(comment.createdAt)}
                               </span>
                             )}
                             {/* Reply Input Form */}
@@ -957,7 +978,7 @@ export default function SocialPage() {
                                     <div className="flex-1">
                                       <div className="flex items-center gap-2 mb-1">
                                         <span className="text-xs font-medium text-slate-900 dark:text-white">
-                                          {reply.author?.username || reply.author?.fullName || 'Usuario'}
+                                          {reply.author?.username || reply.author?.fullName || t('social.userFallback')}
                                         </span>
                                         {currentUserId && (reply.userId === currentUserId || post.userId === currentUserId) && (
                                           <Button
@@ -973,7 +994,7 @@ export default function SocialPage() {
                                       <p className="text-xs text-slate-700 dark:text-slate-300">{reply.content}</p>
                                       {reply.createdAt && (
                                         <span className="text-xs text-slate-500 dark:text-slate-400">
-                                          {new Date(reply.createdAt).toLocaleString()}
+                                          {formatDateTime(reply.createdAt)}
                                         </span>
                                       )}
                                     </div>
@@ -1039,11 +1060,11 @@ export default function SocialPage() {
                     </Avatar>
                     <div>
                       <h3 className="text-slate-900 dark:text-white font-medium">
-                        {post.author?.username || post.author?.fullName || 'Usuario'}
+                        {post.author?.username || post.author?.fullName || t('social.userFallback')}
                       </h3>
                       {post.createdAt && (
                         <p className="text-sm text-slate-500 dark:text-slate-400">
-                          {new Date(post.createdAt).toLocaleString()}
+                          {formatDateTime(post.createdAt)}
                         </p>
                       )}
                     </div>
@@ -1146,14 +1167,14 @@ export default function SocialPage() {
                     <Heart className={`h-4 w-4 mr-2 ${liked[post.id] || post.isLiked ? 'fill-pink-500' : ''}`} />
                     {(post.likesCount ?? 0) + ((liked[post.id] && !post.isLiked) ? 1 : 0)}
                   </Button>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="text-slate-600 dark:text-slate-400"
-                      onClick={() => handleLoadComments(post.id)}
-                    >
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="text-slate-600 dark:text-slate-400"
+                    onClick={() => handleLoadComments(post.id)}
+                  >
                       {post.commentsCount ?? 0} {t('social.comments')}
-                    </Button>
+                  </Button>
                   <Button
                     variant="ghost"
                     size="sm"
@@ -1178,7 +1199,7 @@ export default function SocialPage() {
                         <div className="flex-1">
                           <div className="flex items-center gap-2 mb-1">
                             <span className="text-sm font-medium text-slate-900 dark:text-white">
-                              {comment.author?.username || comment.author?.fullName || 'Usuario'}
+                              {comment.author?.username || comment.author?.fullName || t('social.userFallback')}
                             </span>
                             <div className="flex items-center gap-1 ml-auto">
                               <Button
@@ -1204,7 +1225,7 @@ export default function SocialPage() {
                           <p className="text-sm text-slate-700 dark:text-slate-300">{comment.content}</p>
                           {comment.createdAt && (
                             <span className="text-xs text-slate-500 dark:text-slate-400">
-                              {new Date(comment.createdAt).toLocaleString()}
+                                {formatDateTime(comment.createdAt)}
                             </span>
                           )}
                           {/* Reply Input Form */}
@@ -1261,7 +1282,7 @@ export default function SocialPage() {
                                   <div className="flex-1">
                                     <div className="flex items-center gap-2 mb-1">
                                       <span className="text-xs font-medium text-slate-900 dark:text-white">
-                                        {reply.author?.username || reply.author?.fullName || 'Usuario'}
+                                        {reply.author?.username || reply.author?.fullName || t('social.userFallback')}
                                       </span>
                                       {currentUserId && (reply.userId === currentUserId || post.userId === currentUserId) && (
                                         <Button
@@ -1277,7 +1298,7 @@ export default function SocialPage() {
                                     <p className="text-xs text-slate-700 dark:text-slate-300">{reply.content}</p>
                                     {reply.createdAt && (
                                       <span className="text-xs text-slate-500 dark:text-slate-400">
-                                        {new Date(reply.createdAt).toLocaleString()}
+                                          {formatDateTime(reply.createdAt)}
                                       </span>
                                     )}
                                   </div>

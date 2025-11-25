@@ -30,6 +30,37 @@ export default function ExercisesPage() {
   const [selectedExercises, setSelectedExercises] = useState<string[]>([]);
   const [exercises, setExercises] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [persistedExerciseMap, setPersistedExerciseMap] = useState<Record<string, any>>({});
+
+  const getExerciseId = (exercise: any): string => {
+    const rawId = exercise?.id ?? exercise?.uuid ?? exercise?._id ?? exercise?.exercise_id;
+    return rawId ? String(rawId) : '';
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const stored = localStorage.getItem('workoutFormExercises');
+      if (stored) {
+        const parsed = JSON.parse(stored);
+        if (Array.isArray(parsed)) {
+          const map: Record<string, any> = {};
+          const ids: string[] = [];
+          parsed.forEach((exercise: any) => {
+            const id = getExerciseId(exercise);
+            if (id) {
+              map[id] = exercise;
+              ids.push(id);
+            }
+          });
+          setPersistedExerciseMap(map);
+          setSelectedExercises(ids);
+        }
+      }
+    } catch {
+      // ignore parse errors
+    }
+  }, []);
 
   useEffect(() => {
     let mounted = true;
@@ -117,20 +148,21 @@ export default function ExercisesPage() {
   const handleSave = () => {
     // Save selected exercises to localStorage so they persist across navigation
     if (selectedExercises.length > 0) {
-      // Create array of selected exercise data by matching IDs from full exercises array
       const selectedExerciseData: any[] = [];
 
       selectedExercises.forEach((selectedId) => {
-        const exercise = exercises.find(ex => {
-          const exId = String(ex.id || ex.uuid || ex._id);
-          return exId === selectedId;
-        });
+        const exercise =
+          exercises.find((ex) => getExerciseId(ex) === selectedId) ||
+          persistedExerciseMap[selectedId];
+
         if (exercise) {
           selectedExerciseData.push(exercise);
         }
       });
 
       localStorage.setItem('workoutFormExercises', JSON.stringify(selectedExerciseData));
+    } else {
+      localStorage.removeItem('workoutFormExercises');
     }
     router.back();
   };
@@ -259,19 +291,19 @@ export default function ExercisesPage() {
                           <p className="text-slate-400 text-sm">{exercise.difficulty}</p>
                         </div>
                         <div className="flex items-center gap-2">
-                          <Button
-                            variant="ghost"
-                            size="sm"
+                            <Button
+                              variant="ghost"
+                              size="sm"
                             className="text-slate-400 hover:text-emerald-500 hover:bg-emerald-500/10"
-                            onClick={(e) => {
-                              e.stopPropagation();
+                              onClick={(e) => {
+                                e.stopPropagation();
                               router.push(`/exercises/${exerciseId}`);
-                            }}
+                              }}
                             title="Ver detalles"
-                          >
+                            >
                             <Eye className="h-4 w-4 mr-1" />
                             Ver detalles
-                          </Button>
+                            </Button>
                           <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                             isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-slate-600'
                           }`}>

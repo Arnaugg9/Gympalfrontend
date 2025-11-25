@@ -1,11 +1,13 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent } from '@/components/ui/card';
-import { Send, Dumbbell, Utensils, Calendar, Sparkles, Loader2, User, Plus, MessageSquare, Trash2, Mic, MicOff, Square } from 'lucide-react';
+import { Send, Dumbbell, Utensils, Calendar, Sparkles, Loader2, User, Plus, MessageSquare, Trash2, Mic, MicOff, Square, Pencil, PanelLeftClose, PanelLeftOpen } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
+import { Input } from '@/components/ui/input';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
@@ -13,8 +15,15 @@ import { useTranslation } from 'react-i18next';
 import { aiChatApi } from '@/features/ai-chat/api/ai-chat.api';
 import { toast } from 'sonner';
 import { profileApi } from '@/features/profile/api/profile.api';
-import { format } from 'date-fns';
 import { AiMarkdown } from '@/components/shared/AiMarkdown';
+import type { AiContextSummary } from '@/features/ai-chat/types';
+
+const resolveLocale = (lang: string) => {
+  if (lang?.startsWith('es')) return 'es-ES';
+  if (lang?.startsWith('ca')) return 'ca-ES';
+  if (lang?.startsWith('fr')) return 'fr-FR';
+  return 'en-US';
+};
 
 /**
  * AIChatPage Component
@@ -28,7 +37,10 @@ import { AiMarkdown } from '@/components/shared/AiMarkdown';
  * - Quick action suggestions
  */
 export default function AIChatPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = resolveLocale(i18n.language);
+  const defaultChatLabel = t('aiChat.defaultChatTitle', { defaultValue: 'Chat' });
+  const maxChatRetries = 2;
   // State for chat messages
   const [messages, setMessages] = useState<{role: string, content: string}[]>([]);
   // State for list of conversations
@@ -45,6 +57,15 @@ export default function AIChatPage() {
   const [userAvatar, setUserAvatar] = useState<string | null>(null);
   // Recording state
   const [isRecording, setIsRecording] = useState(false);
+  const [contextSummary, setContextSummary] = useState<AiContextSummary | null>(null);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [hasUserDataContext, setHasUserDataContext] = useState(false);
+  // Rename dialog state
+  const [renameDialog, setRenameDialog] = useState<{ open: boolean; conversationId: string | null; value: string }>({
+    open: false,
+    conversationId: null,
+    value: '',
+  });
   
   // Refs for speech recognition and auto-scrolling
   const recognitionRef = useRef<any>(null);
@@ -101,6 +122,15 @@ export default function AIChatPage() {
     }
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const mediaQuery = window.matchMedia('(min-width: 1280px)');
+    const handleChange = (event: MediaQueryListEvent) => setIsSidebarOpen(event.matches);
+    setIsSidebarOpen(mediaQuery.matches);
+    mediaQuery.addEventListener('change', handleChange);
+    return () => mediaQuery.removeEventListener('change', handleChange);
+  }, []);
+
   /**
    * Toggle voice recording state
    * Handles permission requests and start/stop logic
@@ -149,19 +179,28 @@ export default function AIChatPage() {
         const conversationsResponse = await aiChatApi.getConversations().catch(() => ({ data: { conversations: [] } } as any));
 
         const profile = profileResponse.data;
+        const profileAny = profile as Record<string, any> | undefined;
         // Handle potential data wrapper inconsistencies safely
         const conversationsData = (conversationsResponse as any).data || conversationsResponse;
 
-        if (profile?.avatarUrl) {
-          setUserAvatar(profile.avatarUrl);
+        const avatarCandidate =
+          profileAny?.avatarUrl ||
+          profileAny?.avatar_url ||
+          profileAny?.avatar ||
+          profileAny?.imageUrl ||
+          profileAny?.image_url;
+
+        if (avatarCandidate) {
+          setUserAvatar(avatarCandidate);
         }
 
         const fetchedConversations = conversationsData?.conversations || [];
-        setConversations(fetchedConversations);
+        const normalizedConversations = fetchedConversations.map((conv: any) => normalizeConversation(conv));
+        setConversations(normalizedConversations);
 
-        if (fetchedConversations.length > 0) {
+        if (normalizedConversations.length > 0) {
           // Load the latest conversation by default
-          const latestConversation = fetchedConversations[0];
+          const latestConversation = normalizedConversations[0];
           setCurrentConversationId(latestConversation.id);
           loadMessages(latestConversation.id);
         } else {
@@ -186,7 +225,45 @@ export default function AIChatPage() {
     };
 
     loadInitialData();
-  }, [t]);
+  }, [t, locale, defaultChatLabel]);
+
+  const refreshContextSummary = useCallback(async () => {
+    try {
+      const { data } = await aiChatApi.getContextSummary();
+      setContextSummary(data);
+      setHasUserDataContext(Boolean(data?.hasEssentialInfo));
+    } catch (error) {
+      console.error('Failed to load user context summary', error);
+    }
+  }, []);
+
+  useEffect(() => {
+    refreshContextSummary();
+  }, [refreshContextSummary]);
+
+  useEffect(() => {
+    if (!messages.length || hasUserDataContext) return;
+    const latest = messages[messages.length - 1];
+    const text = (latest?.content || '').toLowerCase();
+    const hasProfileMarkers = ['name:', 'edad', 'age', 'weight', 'peso', 'altura', 'height', 'dieta', 'dietary preference'].some((marker) =>
+      text.includes(marker)
+    );
+    const assistantAcknowledged =
+      latest?.role === 'assistant' &&
+      (text.includes('tenemos la mayoría de la información') ||
+        text.includes('we have most of the information we need') ||
+        text.includes('thanks for providing'));
+    if (hasProfileMarkers || assistantAcknowledged) {
+      setHasUserDataContext(true);
+      refreshContextSummary();
+    }
+  }, [messages, hasUserDataContext, refreshContextSummary]);
+
+  useEffect(() => {
+    if (contextSummary?.hasEssentialInfo !== undefined) {
+      setHasUserDataContext(Boolean(contextSummary?.hasEssentialInfo));
+    }
+  }, [contextSummary?.hasEssentialInfo]);
 
   /**
    * Load messages for a specific conversation
@@ -232,18 +309,48 @@ export default function AIChatPage() {
     });
   }, [messages, isInitialLoading]);
 
+  const formatChatTimestamp = (dateInput?: string | Date) => {
+    const formatter = new Intl.DateTimeFormat(locale, {
+      month: 'short',
+      day: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+    try {
+      return formatter.format(dateInput ? new Date(dateInput) : new Date());
+    } catch {
+      return new Date().toLocaleString();
+    }
+  };
+
+  const normalizeConversation = (conversation: any, fallbackTitle?: string) => {
+    const baseTitle = (fallbackTitle ?? conversation?.title ?? '').trim();
+    if (baseTitle) {
+      return { ...conversation, title: baseTitle };
+    }
+    const createdAt = conversation?.created_at || conversation?.createdAt;
+    return {
+      ...conversation,
+      title: `${defaultChatLabel} ${formatChatTimestamp(createdAt)}`,
+    };
+  };
+
+  const wait = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
   /**
    * Create a new empty conversation
    */
   const handleCreateNewChat = async () => {
     try {
-      const { data: newConversation } = await aiChatApi.startConversation('New Chat');
-      setConversations([newConversation, ...conversations]);
-      setCurrentConversationId(newConversation.id);
+      const autoTitle = `${defaultChatLabel} ${formatChatTimestamp()}`;
+      const { data: newConversation } = await aiChatApi.startConversation(autoTitle);
+      const normalized = normalizeConversation(newConversation, autoTitle);
+      setConversations((prev) => [normalized, ...prev]);
+      setCurrentConversationId(normalized.id);
       setMessages([{ role: 'assistant', content: t('aiChat.greeting') }]);
     } catch (error) {
       console.error('Failed to create new chat:', error);
-      toast.error('Failed to start new conversation');
+      toast.error(t('errors.generic', { defaultValue: 'Failed to start new conversation' }));
     }
   };
 
@@ -276,6 +383,46 @@ export default function AIChatPage() {
   };
 
   /**
+   * Rename a conversation
+   */
+  const openRenameDialog = (e: React.MouseEvent, conversationId: string) => {
+    e.stopPropagation();
+    const conversation = conversations.find((c) => c.id === conversationId);
+    if (!conversation) return;
+    const currentTitle = conversation.title || `${defaultChatLabel} ${formatChatTimestamp(conversation.created_at)}`;
+    setRenameDialog({ open: true, conversationId, value: currentTitle });
+  };
+
+  const handleRenameChat = async () => {
+    if (!renameDialog.conversationId) return;
+    const trimmedTitle = renameDialog.value.trim();
+
+    if (!trimmedTitle) {
+      toast.error(t('aiChat.renameValidation', { defaultValue: 'Title cannot be empty' }));
+      return;
+    }
+
+    try {
+      const { data: updatedConversation } = await aiChatApi.renameConversation(renameDialog.conversationId, trimmedTitle);
+      const normalized = normalizeConversation(updatedConversation, trimmedTitle);
+      setConversations((prev) =>
+        prev.map((c) => (c.id === renameDialog.conversationId ? { ...c, ...normalized } : c))
+      );
+      toast.success(t('aiChat.renameSuccess', { defaultValue: 'Conversation renamed' }));
+      setRenameDialog({ open: false, conversationId: null, value: '' });
+    } catch (error) {
+      console.error('Failed to rename chat:', error);
+      toast.error(t('errors.generic', { defaultValue: 'Failed to rename conversation' }));
+    }
+  };
+
+  const handleCloseRenameDialog = () => {
+    setRenameDialog({ open: false, conversationId: null, value: '' });
+  };
+
+  const toggleSidebar = () => setIsSidebarOpen((prev) => !prev);
+
+  /**
    * Select a conversation from the sidebar
    * @param conversationId - ID of conversation to select
    */
@@ -297,6 +444,64 @@ export default function AIChatPage() {
     }
   };
 
+  const buildSmallTalkResponse = useCallback(() => {
+    const profileName = contextSummary?.profile?.full_name || contextSummary?.profile?.username || '';
+    const friendlyName = profileName ? profileName.split(' ')[0] : null;
+    let preferencesData: Record<string, any> | null = null;
+    const rawPrefs = contextSummary?.profile?.preferences;
+
+    if (rawPrefs) {
+      if (typeof rawPrefs === 'string') {
+        try {
+          preferencesData = JSON.parse(rawPrefs);
+        } catch {
+          preferencesData = null;
+        }
+      } else if (typeof rawPrefs === 'object') {
+        preferencesData = rawPrefs as Record<string, any>;
+      }
+    }
+
+    const primaryGoal = preferencesData?.primary_goal || preferencesData?.goal;
+
+    let base = friendlyName ? `¡Hola de nuevo, ${friendlyName}!` : '¡Hola de nuevo!';
+    base += ' Ya tengo tus datos guardados y no hace falta repetirlos.';
+
+    if (primaryGoal) {
+      base += ` Seguimos con el objetivo de ${primaryGoal}.`;
+    } else {
+      base += ' Seguimos con tus objetivos definidos.';
+    }
+
+    base += ' ¿Quieres que ajustemos la rutina, revisemos la nutrición o resolvamos alguna duda rápida?';
+    return base;
+  }, [contextSummary]);
+
+  const sendMessageWithRetry = async (
+    messageText: string,
+    targetConversationId: string,
+    controller: AbortController,
+    attempt = 1
+  ): Promise<{ data: { response: string } }> => {
+    try {
+      return await aiChatApi.chatWithAgent(messageText, targetConversationId, controller.signal);
+    } catch (error: any) {
+      if (controller.signal.aborted || error?.name === 'AbortError') {
+        throw error;
+      }
+
+      const status = error?.response?.status;
+      const retryable = attempt < maxChatRetries && (!status || status >= 500 || status === 429 || status === 408);
+
+      if (retryable) {
+        await wait(2000 * attempt);
+        return sendMessageWithRetry(messageText, targetConversationId, controller, attempt + 1);
+      }
+
+      throw error;
+    }
+  };
+
   /**
    * Send a message to the AI agent
    */
@@ -308,6 +513,23 @@ export default function AIChatPage() {
     setInput('');
     setIsLoading(true);
 
+    const normalizedMessage = userMessage.toLowerCase();
+    const greetingKeywords = ['hola', 'hello', 'hi', 'buenas', 'buenos días', 'buenas tardes', 'buenas noches', 'hey', 'qué tal', 'que tal'];
+    const isGreeting = greetingKeywords.some((keyword) => normalizedMessage === keyword || normalizedMessage.startsWith(`${keyword} `));
+
+    if (hasUserDataContext && isGreeting) {
+      const smallTalkResponse = buildSmallTalkResponse();
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          content: smallTalkResponse,
+        },
+      ]);
+      setIsLoading(false);
+      return;
+    }
+
     // Create new AbortController for this request
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -316,13 +538,16 @@ export default function AIChatPage() {
       // If no current conversation, create one first
       let targetConversationId = currentConversationId;
       if (!targetConversationId) {
-         const { data: newConversation } = await aiChatApi.startConversation(userMessage.substring(0, 30) + '...');
-         setConversations([newConversation, ...conversations]);
-         setCurrentConversationId(newConversation.id);
-         targetConversationId = newConversation.id;
+         const snippetTitle = userMessage.substring(0, 30).trim();
+         const fallbackTitle = snippetTitle || `${defaultChatLabel} ${formatChatTimestamp()}`;
+         const { data: newConversation } = await aiChatApi.startConversation(fallbackTitle);
+         const normalizedConversation = normalizeConversation(newConversation, fallbackTitle);
+         setConversations((prev) => [normalizedConversation, ...prev]);
+         setCurrentConversationId(normalizedConversation.id);
+         targetConversationId = normalizedConversation.id;
       }
 
-      const response = await aiChatApi.chatWithAgent(userMessage, targetConversationId!, controller.signal);
+      const response = await sendMessageWithRetry(userMessage, targetConversationId!, controller);
       
       setMessages(prev => [
         ...prev,
@@ -332,25 +557,13 @@ export default function AIChatPage() {
         },
       ]);
     } catch (error: any) {
+      setMessages(prev => (prev.length ? prev.slice(0, -1) : prev));
+      setInput(userMessage);
       if (error.name === 'AbortError') {
-        // Request was cancelled by user
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: '[Generation stopped by user]',
-          },
-        ]);
+        toast.info('Generation stopped by user.');
       } else {
         console.error('Chat error:', error);
-        toast.error('Failed to communicate with AI Agent');
-        setMessages(prev => [
-          ...prev,
-          {
-            role: 'assistant',
-            content: "Sorry, I'm having trouble connecting to the agent right now. Please try again later.",
-          },
-        ]);
+        toast.error(error?.message || 'Failed to communicate with AI Agent');
       }
     } finally {
       setIsLoading(false);
@@ -366,18 +579,18 @@ export default function AIChatPage() {
   ];
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
+    <div className="flex flex-col gap-6 h-[calc(100vh-96px)]">
+      <div className="flex flex-wrap items-center justify-between gap-4">
         <div>
-          <h1 className="text-slate-900 dark:text-white mb-2 flex items-center gap-3">
-            <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-2 rounded-lg">
+          <h1 className="text-slate-900 dark:text-white mb-2 flex items-center gap-3 text-3xl font-semibold">
+            <div className="bg-gradient-to-r from-purple-500 to-pink-500 p-2 rounded-lg shadow-lg shadow-purple-500/40">
               <Sparkles className="h-6 w-6 text-white" />
             </div>
             {t('aiChat.title')}
           </h1>
           <p className="text-slate-600 dark:text-slate-400">{t('aiChat.subtitle')}</p>
         </div>
-        <Badge variant="outline" className="border-purple-500 text-purple-400">
+        <Badge variant="outline" className="border-purple-500/50 text-purple-500 bg-purple-500/10">
           <span className="relative flex h-2 w-2 mr-2">
             <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
             <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
@@ -386,107 +599,112 @@ export default function AIChatPage() {
         </Badge>
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid md:grid-cols-3 gap-4">
-        <Link href="/workouts/new">
-          <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-purple-500/50 transition-colors cursor-pointer">
-            <CardContent className="pt-6">
-              <div className="bg-purple-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-3">
-                <Dumbbell className="h-6 w-6 text-purple-500" />
-              </div>
-              <h3 className="text-slate-900 dark:text-white mb-1">AI: {t('workouts.createNew')}</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm">{t('common.comingSoon')}</p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/nutrition/create">
-          <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-purple-500/50 transition-colors cursor-pointer">
-            <CardContent className="pt-6">
-              <div className="bg-purple-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-3">
-                <Utensils className="h-6 w-6 text-purple-500" />
-              </div>
-              <h3 className="text-slate-900 dark:text-white mb-1">AI: {t('diet.createPlan')}</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm">{t('common.comingSoon')}</p>
-            </CardContent>
-          </Card>
-        </Link>
-
-        <Link href="/calendar">
-          <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:border-purple-500/50 transition-colors cursor-pointer">
-            <CardContent className="pt-6">
-              <div className="bg-purple-500/10 w-12 h-12 rounded-lg flex items-center justify-center mb-3">
-                <Calendar className="h-6 w-6 text-purple-500" />
-              </div>
-              <h3 className="text-slate-900 dark:text-white mb-1">AI: {t('calendar.title')}</h3>
-              <p className="text-slate-600 dark:text-slate-400 text-sm">{t('common.comingSoon')}</p>
-            </CardContent>
-          </Card>
-        </Link>
-      </div>
-
       {/* Chat Container */}
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-6 lg:h-[calc(100vh-260px)] lg:min-h-[520px]">
-        
-        {/* Sidebar - Conversations List */}
-        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 lg:col-span-1 flex flex-col overflow-hidden lg:h-full">
-          <div className="p-4 border-b border-slate-200 dark:border-slate-700 shrink-0">
-            <Button 
-              onClick={handleCreateNewChat}
-              className="w-full bg-slate-100 dark:bg-slate-700 text-slate-900 dark:text-white hover:bg-slate-200 dark:hover:bg-slate-600"
+      <div className="flex flex-1 min-h-0 gap-6 flex-col xl:flex-row">
+        {isSidebarOpen && (
+        <Card className="w-full xl:w-80 flex flex-col bg-white/80 dark:bg-slate-900/70 border border-white/10 dark:border-slate-700/60 backdrop-blur-xl shadow-xl">
+          <div className="p-4 border-b border-white/20 dark:border-slate-800/60 shrink-0 flex items-center gap-2">
+            <div className="flex flex-1 items-center gap-2">
+              <Button 
+                onClick={handleCreateNewChat}
+                className="flex-1 bg-gradient-to-r from-emerald-500 to-teal-500 text-white hover:from-emerald-600 hover:to-teal-600"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                {t('aiChat.newChat')}
+              </Button>
+            </div>
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={toggleSidebar}
+              className="inline-flex h-10 w-10 rounded-full border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+              title={isSidebarOpen ? t('aiChat.hideChats', { defaultValue: 'Hide chats' }) : t('aiChat.showChats', { defaultValue: 'Show chats' })}
             >
-              <Plus className="h-4 w-4 mr-2" />
-              New Chat
+              {isSidebarOpen ? <PanelLeftClose className="h-4 w-4" /> : <PanelLeftOpen className="h-4 w-4" />}
             </Button>
           </div>
           <div className="flex-1 min-h-0">
-            <ScrollArea className="h-full">
-              <div className="p-2 space-y-1">
+              <ScrollArea className="h-full">
+              <div className="p-2 space-y-2">
                 {conversations.map((conv) => (
                   <div
                     key={conv.id}
                     onClick={() => handleSelectConversation(conv.id)}
-                    className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-colors group ${
+                    className={`flex items-center justify-between p-3 rounded-2xl cursor-pointer transition-all border ${
                       currentConversationId === conv.id
-                        ? 'bg-purple-50 dark:bg-purple-900/20 text-purple-700 dark:text-purple-300'
-                        : 'hover:bg-slate-100 dark:hover:bg-slate-700/50 text-slate-700 dark:text-slate-300'
+                        ? 'bg-purple-500/10 border-purple-400 text-purple-800 dark:text-purple-200'
+                        : 'border-transparent hover:bg-slate-100 dark:hover:bg-slate-800/60 text-slate-700 dark:text-slate-300'
                     }`}
                   >
                     <div className="flex items-center gap-3 overflow-hidden">
-                      <MessageSquare className="h-4 w-4 flex-shrink-0" />
+                      <div className="h-8 w-8 rounded-full bg-purple-500/15 flex items-center justify-center">
+                        <MessageSquare className="h-4 w-4 text-purple-500" />
+                      </div>
                       <div className="flex flex-col overflow-hidden">
-                        <span className="truncate text-sm font-medium">{conv.title || 'New Chat'}</span>
+                        <span className="truncate text-sm font-medium">{conv.title || t('aiChat.untitledChat')}</span>
                         <span className="text-xs text-slate-500 dark:text-slate-500">
-                          {format(new Date(conv.created_at), 'MMM d, HH:mm')}
+                          {new Intl.DateTimeFormat(locale, {
+                            month: 'short',
+                            day: 'numeric',
+                            hour: '2-digit',
+                            minute: '2-digit'
+                          }).format(new Date(conv.created_at))}
                         </span>
                       </div>
                     </div>
-                    <Button
-                      variant="ghost"
-                      size="icon"
-                      className="h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity text-slate-400 hover:text-red-500"
-                      onClick={(e) => handleDeleteChat(e, conv.id)}
-                    >
-                      <Trash2 className="h-3 w-3" />
-                    </Button>
+                    <div className="flex items-center gap-1">
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-slate-400 hover:text-emerald-500"
+                        onClick={(e) => openRenameDialog(e, conv.id)}
+                        title={t('aiChat.renameChat', { defaultValue: 'Rename chat' })}
+                      >
+                        <Pencil className="h-3 w-3" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-6 w-6 text-slate-400 hover:text-red-500"
+                        onClick={(e) => handleDeleteChat(e, conv.id)}
+                        title={t('aiChat.deleteChat', { defaultValue: 'Delete chat' })}
+                      >
+                        <Trash2 className="h-3 w-3" />
+                      </Button>
+                    </div>
                   </div>
                 ))}
                 {conversations.length === 0 && (
                   <div className="text-center p-4 text-slate-500 text-sm">
-                    No conversations yet
+                    {t('aiChat.noConversations')}
                   </div>
                 )}
               </div>
             </ScrollArea>
           </div>
         </Card>
+        )}
+
+        {!isSidebarOpen && (
+          <div className="flex xl:w-16">
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={toggleSidebar}
+              className="h-10 w-10 rounded-full border-slate-300 dark:border-slate-700 text-slate-700 dark:text-slate-200"
+              title={t('aiChat.showChats', { defaultValue: 'Show chats' })}
+            >
+              <PanelLeftOpen className="h-4 w-4" />
+            </Button>
+          </div>
+        )}
 
         {/* Main Chat Area */}
-        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 lg:col-span-3 flex flex-col overflow-hidden min-h-[550px] lg:h-full">
+        <Card className="flex-1 flex flex-col bg-white/90 dark:bg-slate-900/70 border border-white/10 dark:border-slate-700/60 backdrop-blur-xl shadow-2xl">
           <CardContent className="p-0 flex-1 flex flex-col min-h-0">
             {/* Messages */}
             <div className="flex-1 min-h-0">
-              <ScrollArea ref={messagesViewportRef} className="h-full p-6">
+              <ScrollArea ref={messagesViewportRef} className="h-full px-6 py-6">
               {isInitialLoading ? (
                 <div className="flex h-full items-center justify-center">
                   <div className="flex flex-col items-center gap-4">
@@ -501,63 +719,55 @@ export default function AIChatPage() {
                 </div>
               ) : (
               <div className="space-y-4">
-                {messages.map((message, index) => (
-                  <div
-                    key={index}
-                    className={`flex gap-3 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}
-                  >
-                    <Avatar className={message.role === 'assistant' ? 'bg-gradient-to-br from-purple-500 to-pink-500' : 'bg-gradient-to-br from-emerald-500 to-teal-500'}>
-                      {message.role === 'user' && userAvatar ? (
-                        <AvatarImage src={userAvatar} alt="User" />
-                      ) : null}
-                      <AvatarFallback className="text-white bg-transparent">
-                        {message.role === 'assistant' ? <Sparkles className="h-5 w-5" /> : <User className="h-5 w-5" />}
-                      </AvatarFallback>
-                    </Avatar>
+                {messages.map((message, index) => {
+                  const isUserMessage = message.role === 'user';
+                  return (
                     <div
-                      className={`rounded-lg p-4 max-w-[85%] md:max-w-[70%] ${
-                        message.role === 'user'
-                          ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white'
-                          : 'bg-slate-100 dark:bg-slate-700/50 text-slate-900 dark:text-slate-200'
-                      }`}
+                      key={index}
+                      className={`flex gap-3 ${isUserMessage ? 'flex-row-reverse' : ''}`}
                     >
-                      {message.role === 'assistant' ? (
-                        <AiMarkdown content={message.content} />
-                      ) : (
-                        <p className="whitespace-pre-wrap break-words">{message.content}</p>
-                      )}
+                      <Avatar className={isUserMessage ? 'bg-gradient-to-br from-emerald-500 to-teal-500' : 'bg-gradient-to-br from-purple-500 to-pink-500'}>
+                        {isUserMessage && userAvatar ? (
+                          <AvatarImage src={userAvatar} alt="User avatar" />
+                        ) : null}
+                        <AvatarFallback className="text-white bg-transparent">
+                          {isUserMessage ? <User className="h-5 w-5" /> : <Sparkles className="h-5 w-5" />}
+                        </AvatarFallback>
+                      </Avatar>
+                      <div
+                        className={`rounded-2xl px-4 py-3 max-w-[85%] md:max-w-[70%] text-sm leading-relaxed ${
+                          isUserMessage
+                            ? 'bg-gradient-to-r from-emerald-500 to-teal-500 text-white shadow-lg shadow-emerald-500/30'
+                            : 'bg-slate-100/70 dark:bg-slate-800/70 text-slate-900 dark:text-slate-200 border border-slate-200/50 dark:border-slate-700/60'
+                        }`}
+                      >
+                        <AiMarkdown content={message.content} className={isUserMessage ? 'text-white' : undefined} />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
                 )}
               </ScrollArea>
             </div>
 
-            {/* Suggested Prompts - shown when no user messages */}
-            {messages.length === 1 && (
-              <div className="p-4 border-t border-slate-200 dark:border-slate-700/50">
-                <p className="text-slate-600 dark:text-slate-400 text-sm mb-3">Quick suggestions:</p>
-                <div className="grid grid-cols-2 gap-2">
-                  {suggestedPrompts.map((prompt, index) => {
-                    const Icon = prompt.icon;
-                    return (
-                      <button
-                        key={index}
-                        onClick={() => setInput(prompt.text)}
-                        className="flex items-start gap-2 p-3 bg-slate-100 dark:bg-slate-700/30 hover:bg-slate-200 dark:hover:bg-slate-700/50 rounded-lg text-left transition-colors group"
-                      >
-                        <Icon className={`h-4 w-4 text-${prompt.color}-500 flex-shrink-0 mt-0.5 group-hover:scale-110 transition-transform`} />
-                        <span className="text-slate-700 dark:text-slate-300 text-sm">{prompt.text}</span>
-                      </button>
-                    );
-                  })}
-                </div>
-              </div>
-            )}
-
             {/* Input */}
-            <div className="p-4 border-t border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-900/50 shrink-0">
+            <div className="sticky bottom-0 w-full border-t border-white/30 dark:border-slate-700/60 bg-gradient-to-b from-white/90 to-white dark:from-slate-900/80 dark:to-slate-900/95 backdrop-blur px-4 py-4">
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-3">
+                {suggestedPrompts.map((prompt, index) => {
+                  const Icon = prompt.icon;
+                  return (
+                    <button
+                      key={index}
+                      onClick={() => setInput(prompt.text)}
+                      className="flex items-center gap-2 px-3 py-2 rounded-2xl bg-white/80 dark:bg-slate-800/60 border border-white/40 dark:border-slate-700/60 hover:border-emerald-500 hover:bg-emerald-50 dark:hover:bg-emerald-500/10 text-sm text-slate-700 dark:text-slate-200 transition-colors"
+                    >
+                      <Icon className="h-4 w-4 text-purple-500" />
+                      <span className="truncate">{prompt.text}</span>
+                    </button>
+                  );
+                })}
+              </div>
               <div className="flex gap-2 items-end">
                 <Button
                   onClick={toggleRecording}
@@ -573,7 +783,7 @@ export default function AIChatPage() {
                 </Button>
                 <Textarea
                   placeholder={isRecording ? "Listening..." : t('aiChat.placeholder')}
-                  className="min-h-[40px] max-h-[150px] bg-background border-border text-foreground resize-none"
+                  className="min-h-[40px] max-h-[150px] bg-background border-border text-foreground resize-none shadow-inner rounded-2xl"
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
                   onKeyDown={(e) => {
@@ -586,7 +796,7 @@ export default function AIChatPage() {
                 {isLoading ? (
                   <Button
                     onClick={handleStop}
-                    className="bg-red-500 hover:bg-red-600 text-white h-10 px-4"
+                    className="bg-red-500 hover:bg-red-600 text-white h-10 px-4 rounded-2xl"
                     title="Stop generating"
                   >
                     <Square className="h-4 w-4 fill-current" />
@@ -595,7 +805,7 @@ export default function AIChatPage() {
                   <Button
                     onClick={handleSend}
                     disabled={!input.trim()}
-                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white h-10 px-4"
+                    className="bg-gradient-to-r from-purple-500 to-pink-500 hover:from-purple-600 hover:to-pink-600 text-white h-10 px-4 rounded-2xl"
                   >
                     <Send className="h-4 w-4" />
                   </Button>
@@ -608,6 +818,37 @@ export default function AIChatPage() {
           </CardContent>
         </Card>
       </div>
+      {/* Rename Conversation Dialog */}
+      <Dialog open={renameDialog.open} onOpenChange={(open) => (open ? setRenameDialog((prev) => ({ ...prev, open })) : handleCloseRenameDialog())}>
+        <DialogContent className="bg-white dark:bg-slate-800 border border-slate-200 dark:border-slate-700">
+          <DialogHeader>
+            <DialogTitle>{t('aiChat.renameChat', { defaultValue: 'Rename chat' })}</DialogTitle>
+            <DialogDescription>
+              {t('aiChat.renamePrompt', { defaultValue: 'Enter a new name for this chat' })}
+            </DialogDescription>
+          </DialogHeader>
+          <Input
+            value={renameDialog.value}
+            onChange={(e) => setRenameDialog((prev) => ({ ...prev, value: e.target.value }))}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter') {
+                e.preventDefault();
+                handleRenameChat();
+              }
+            }}
+            autoFocus
+            placeholder={t('aiChat.renamePrompt', { defaultValue: 'Enter a new name for this chat' })}
+          />
+          <DialogFooter className="gap-2">
+            <Button variant="outline" onClick={handleCloseRenameDialog}>
+              {t('common.cancel')}
+            </Button>
+            <Button onClick={handleRenameChat}>
+              {t('common.save')}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

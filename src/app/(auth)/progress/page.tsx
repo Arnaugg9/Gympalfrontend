@@ -9,7 +9,7 @@ import { Calendar, Activity, TrendingDown } from 'lucide-react';
 import { LoadingSpinner } from '@/components/ui/loading-spinner';
 import { workoutsApi } from '@/features/workouts/api/api';
 import { useAuthStore } from '@/lib/store/auth.store';
-import { LineChart, Line, BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
+import { LineChart, Line, BarChart, Bar, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer } from 'recharts';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 
 /**
@@ -139,6 +139,13 @@ export default function ProgressPage() {
   // Personal info returns: { weight_kg, height_cm, age, ... }
   const currentWeight = weightDataResponse.weight_kg || null;
 
+  const exerciseTrendData = [
+    { label: t('progress.week', { defaultValue: 'Week' }), value: exerciseCountWeek },
+    { label: t('progress.month', { defaultValue: 'Month' }), value: exerciseCountMonth },
+    { label: t('progress.year', { defaultValue: 'Year' }), value: exerciseCountYear },
+    { label: t('progress.all', { defaultValue: 'All' }), value: exerciseCountAll },
+  ];
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center h-screen gap-4">
@@ -149,11 +156,174 @@ export default function ProgressPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 max-w-6xl xl:max-w-7xl mx-auto w-full">
       {/* Header */}
       <div>
         <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{t('progress.title')}</h1>
         <p className="text-lg text-slate-600 dark:text-slate-400">{t('progress.subtitle')}</p>
+      </div>
+
+      {/* Charts Section */}
+      <div className="grid xl:grid-cols-3 md:grid-cols-2 gap-6">
+        {/* Workouts Over Time Chart */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-slate-900 dark:text-white">
+                {t('progress.workoutsOverTime', { defaultValue: 'Workouts Over Time' })}
+              </CardTitle>
+              <Select value={chartPeriod} onValueChange={(value: any) => {
+                setChartPeriod(value);
+                setProgressStats(null); // Reset stats to show loading state
+              }}>
+                <SelectTrigger className="w-[120px] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                  <SelectItem value="week" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800">
+                    {t('progress.week', { defaultValue: 'Week' })}
+                  </SelectItem>
+                  <SelectItem value="month" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800">
+                    {t('progress.month', { defaultValue: 'Month' })}
+                  </SelectItem>
+                  <SelectItem value="year" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800">
+                    {t('progress.year', { defaultValue: 'Year' })}
+                  </SelectItem>
+                  <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800">
+                    {t('progress.all', { defaultValue: 'All' })}
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </CardHeader>
+          <CardContent>
+            {progressStats?.workoutsByPeriod && Array.isArray(progressStats.workoutsByPeriod) && progressStats.workoutsByPeriod.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={progressStats.workoutsByPeriod.sort((a: any, b: any) => a.date.localeCompare(b.date))}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#6b7280"
+                    className="text-xs"
+                    angle={-45}
+                    textAnchor="end"
+                    height={60}
+                  />
+                  <YAxis 
+                    stroke="#6b7280"
+                    className="text-xs"
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                      border: '1px solid #334155',
+                      borderRadius: '8px',
+                      color: '#fff'
+                    }}
+                    labelStyle={{ color: '#fff' }}
+                  />
+                  <Bar dataKey="count" fill="#10b981" radius={[8, 8, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-slate-500 dark:text-slate-400">
+                <p>{t('progress.noData', { defaultValue: 'No workout data available' })}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Weight Progression Chart */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-slate-900 dark:text-white">
+              {t('progress.weightProgression', { defaultValue: 'Weight Progression' })}
+            </CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">
+              {t('progress.weightProgressionDesc', { defaultValue: 'Track your strength gains over time' })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {progressStats?.weightProgression && Object.keys(progressStats.weightProgression).length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <LineChart>
+                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                  <XAxis 
+                    dataKey="date" 
+                    stroke="#6b7280"
+                    className="text-xs"
+                  />
+                  <YAxis 
+                    stroke="#6b7280"
+                    className="text-xs"
+                    label={{ value: 'Weight (kg)', angle: -90, position: 'insideLeft' }}
+                  />
+                  <Tooltip 
+                    contentStyle={{ 
+                      backgroundColor: 'rgba(15, 23, 42, 0.9)', 
+                      border: '1px solid #334155',
+                      borderRadius: '8px'
+                    }}
+                  />
+                  <Legend />
+                  {Object.entries(progressStats.weightProgression).map(([exercise, data]: [string, any]) => (
+                    <Line
+                      key={exercise}
+                      type="monotone"
+                      dataKey="weight"
+                      data={data}
+                      name={exercise}
+                      stroke="#10b981"
+                      strokeWidth={2}
+                      dot={{ fill: '#10b981', r: 4 }}
+                      connectNulls
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center text-slate-500 dark:text-slate-400">
+                <p>{t('progress.noWeightData', { defaultValue: 'No weight progression data available' })}</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+
+        {/* Exercises Trend Chart */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
+          <CardHeader>
+            <CardTitle className="text-slate-900 dark:text-white">
+              {t('progress.exerciseTrend', { defaultValue: 'Exercises Completed' })}
+            </CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">
+              {t('progress.exerciseTrendDesc', { defaultValue: 'Compare your exercise volume across different periods' })}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <ResponsiveContainer width="100%" height={300}>
+              <AreaChart data={exerciseTrendData}>
+                <defs>
+                  <linearGradient id="exerciseGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
+                <XAxis dataKey="label" stroke="#6b7280" className="text-xs" />
+                <YAxis stroke="#6b7280" className="text-xs" allowDecimals={false} />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'rgba(15, 23, 42, 0.9)',
+                    border: '1px solid #334155',
+                    borderRadius: '8px',
+                    color: '#fff',
+                  }}
+                />
+                <Area type="monotone" dataKey="value" stroke="#8b5cf6" fillOpacity={1} fill="url(#exerciseGradient)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </CardContent>
+        </Card>
       </div>
 
       {/* Top Stats Cards */}
@@ -298,132 +468,7 @@ export default function ProgressPage() {
         </CardContent>
       </Card>
 
-      {/* Charts Section */}
-      <div className="grid md:grid-cols-2 gap-6">
-        {/* Workouts Over Time Chart */}
-        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
-          <CardHeader>
-            <div className="flex items-center justify-between">
-              <CardTitle className="text-slate-900 dark:text-white">
-                {t('progress.workoutsOverTime', { defaultValue: 'Workouts Over Time' })}
-              </CardTitle>
-              <Select value={chartPeriod} onValueChange={(value: any) => {
-                setChartPeriod(value);
-                setProgressStats(null); // Reset stats to show loading state
-              }}>
-                <SelectTrigger className="w-[120px] bg-white dark:bg-slate-900 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-                  <SelectItem value="week" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800">
-                    {t('progress.week', { defaultValue: 'Week' })}
-                  </SelectItem>
-                  <SelectItem value="month" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800">
-                    {t('progress.month', { defaultValue: 'Month' })}
-                  </SelectItem>
-                  <SelectItem value="year" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800">
-                    {t('progress.year', { defaultValue: 'Year' })}
-                  </SelectItem>
-                  <SelectItem value="all" className="text-slate-900 dark:text-white hover:bg-slate-100 dark:hover:bg-slate-800 focus:bg-slate-100 dark:focus:bg-slate-800">
-                    {t('progress.all', { defaultValue: 'All' })}
-                  </SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardHeader>
-          <CardContent>
-            {progressStats?.workoutsByPeriod && Array.isArray(progressStats.workoutsByPeriod) && progressStats.workoutsByPeriod.length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <BarChart data={progressStats.workoutsByPeriod.sort((a: any, b: any) => a.date.localeCompare(b.date))}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#6b7280"
-                    className="text-xs"
-                    angle={-45}
-                    textAnchor="end"
-                    height={60}
-                  />
-                  <YAxis 
-                    stroke="#6b7280"
-                    className="text-xs"
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(15, 23, 42, 0.9)', 
-                      border: '1px solid #334155',
-                      borderRadius: '8px',
-                      color: '#fff'
-                    }}
-                    labelStyle={{ color: '#fff' }}
-                  />
-                  <Bar dataKey="count" fill="#10b981" radius={[8, 8, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-slate-500 dark:text-slate-400">
-                <p>{t('progress.noData', { defaultValue: 'No workout data available' })}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-
-        {/* Weight Progression Chart */}
-        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700">
-          <CardHeader>
-            <CardTitle className="text-slate-900 dark:text-white">
-              {t('progress.weightProgression', { defaultValue: 'Weight Progression' })}
-            </CardTitle>
-            <CardDescription className="text-slate-600 dark:text-slate-400">
-              {t('progress.weightProgressionDesc', { defaultValue: 'Track your strength gains over time' })}
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {progressStats?.weightProgression && Object.keys(progressStats.weightProgression).length > 0 ? (
-              <ResponsiveContainer width="100%" height={300}>
-                <LineChart>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#374151" opacity={0.1} />
-                  <XAxis 
-                    dataKey="date" 
-                    stroke="#6b7280"
-                    className="text-xs"
-                  />
-                  <YAxis 
-                    stroke="#6b7280"
-                    className="text-xs"
-                    label={{ value: 'Weight (kg)', angle: -90, position: 'insideLeft' }}
-                  />
-                  <Tooltip 
-                    contentStyle={{ 
-                      backgroundColor: 'rgba(15, 23, 42, 0.9)', 
-                      border: '1px solid #334155',
-                      borderRadius: '8px'
-                    }}
-                  />
-                  <Legend />
-                  {Object.entries(progressStats.weightProgression).map(([exercise, data]: [string, any]) => (
-                    <Line
-                      key={exercise}
-                      type="monotone"
-                      dataKey="weight"
-                      data={data}
-                      name={exercise}
-                      stroke="#10b981"
-                      strokeWidth={2}
-                      dot={{ fill: '#10b981', r: 4 }}
-                      connectNulls
-                    />
-                  ))}
-                </LineChart>
-              </ResponsiveContainer>
-            ) : (
-              <div className="h-[300px] flex items-center justify-center text-slate-500 dark:text-slate-400">
-                <p>{t('progress.noWeightData', { defaultValue: 'No weight progression data available' })}</p>
-              </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
+      {/* Charts Section placed at top */}
     </div>
   );
 }

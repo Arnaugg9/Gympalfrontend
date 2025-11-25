@@ -13,6 +13,13 @@ import { workoutsApi } from '@/features/workouts/api/api';
 import { useAuthStore } from '@/lib/store/auth.store';
 import { WorkoutTracker } from '@/components/shared/WorkoutTracker';
 
+const resolveLocale = (lang: string) => {
+  if (lang?.startsWith('es')) return 'es-ES';
+  if (lang?.startsWith('ca')) return 'ca-ES';
+  if (lang?.startsWith('fr')) return 'fr-FR';
+  return 'en-US';
+};
+
 /**
  * TodayWorkoutPage Component
  * 
@@ -24,7 +31,8 @@ import { WorkoutTracker } from '@/components/shared/WorkoutTracker';
  * - Handles refresh via query params
  */
 export default function TodayWorkoutPage() {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
+  const locale = resolveLocale(i18n.language);
   const searchParams = useSearchParams();
   const { user } = useAuthStore();
   const [loading, setLoading] = useState(true);
@@ -109,14 +117,13 @@ export default function TodayWorkoutPage() {
   }, [refreshKey, user?.id]);
 
   const today = new Date();
-  // Format current date
-  const dateStr = today.toLocaleDateString('en-US', { 
-    weekday: 'long', 
-    year: 'numeric', 
-    month: 'long', 
-    day: 'numeric' 
-  });
-  const formattedDate = dateStr.charAt(0).toUpperCase() + dateStr.slice(1);
+  const formattedDateRaw = new Intl.DateTimeFormat(locale, {
+    weekday: 'long',
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric',
+  }).format(today);
+  const formattedDate = formattedDateRaw.charAt(0).toUpperCase() + formattedDateRaw.slice(1);
 
   if (loading) {
     return <div className="flex items-center justify-center h-64"><div className="text-slate-400">{t('common.loading')}</div></div>;

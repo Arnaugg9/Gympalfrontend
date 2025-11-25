@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState, useRef, useMemo } from 'react';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -58,6 +58,12 @@ interface WorkoutTrackerProps {
  * - Exercise set tracking (weight, reps, RPE, RIR, failure, rest time)
  * - Progress saving
  */
+type TimerPersistState = {
+  mode: 'running' | 'paused';
+  endTime?: number;
+  remainingSeconds?: number;
+};
+
 export function WorkoutTracker({
   open,
   onOpenChange,
@@ -68,7 +74,8 @@ export function WorkoutTracker({
   exercises,
 }: WorkoutTrackerProps) {
   const { t } = useTranslation();
-  const [timeRemaining, setTimeRemaining] = useState(durationMinutes * 60);
+  const baseDuration = Math.max(0, durationMinutes * 60);
+  const [timeRemaining, setTimeRemaining] = useState(baseDuration);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [currentExerciseIndex, setCurrentExerciseIndex] = useState(0);
@@ -77,74 +84,141 @@ export function WorkoutTracker({
   const [workoutSessionId, setWorkoutSessionId] = useState<string | null>(null);
   const restTimerRefs = useRef<Record<string, NodeJS.Timeout>>({});
   const restStartTimes = useRef<Record<string, number>>({});
+  const [activeEndTime, setActiveEndTime] = useState<number | null>(null);
+  const [hasInitializedData, setHasInitializedData] = useState(false);
+
+  const timerStorageKey = useMemo(() => {
+    const identifier = scheduledWorkoutId || workoutId || workoutName || 'custom';
+    return identifier ? `workout_timer_${identifier}` : null;
+  }, [scheduledWorkoutId, workoutId, workoutName]);
+
+  const persistTimerState = (state?: TimerPersistState) => {
+    if (typeof window === 'undefined' || !timerStorageKey) return;
+    if (!state) {
+      localStorage.removeItem(timerStorageKey);
+      return;
+    }
+    localStorage.setItem(timerStorageKey, JSON.stringify(state));
+  };
+
+  useEffect(() => {
+    if (typeof window === 'undefined' || !timerStorageKey) {
+      setTimeRemaining(baseDuration);
+      setIsRunning(false);
+      setIsPaused(false);
+      setActiveEndTime(null);
+      return;
+    }
+
+    try {
+      const stored = localStorage.getItem(timerStorageKey);
+      if (stored) {
+        const data = JSON.parse(stored) as TimerPersistState & { remainingSeconds?: number };
+        if (data.mode === 'running' && data.endTime) {
+          const remaining = Math.max(0, Math.round((data.endTime - Date.now()) / 1000));
+          if (remaining > 0) {
+            setTimeRemaining(remaining);
+            setIsRunning(true);
+            setIsPaused(false);
+            setActiveEndTime(data.endTime);
+            return;
+          }
+        } else if (data.mode === 'paused' && typeof data.remainingSeconds === 'number') {
+          setTimeRemaining(Math.max(0, data.remainingSeconds));
+          setIsRunning(false);
+          setIsPaused(true);
+          setActiveEndTime(null);
+          return;
+        }
+      }
+    } catch (error) {
+      console.warn('Failed to restore workout timer state', error);
+    }
+
+    if (timerStorageKey) {
+      localStorage.removeItem(timerStorageKey);
+    }
+    setTimeRemaining(baseDuration);
+    setIsRunning(false);
+    setIsPaused(false);
+    setActiveEndTime(null);
+  }, [timerStorageKey, baseDuration]);
+
+  useEffect(() => {
+    if (!activeEndTime || !isRunning) return;
+    const tick = () => {
+      const remaining = Math.max(0, Math.round((activeEndTime - Date.now()) / 1000));
+      setTimeRemaining(remaining);
+      if (remaining <= 0) {
+        setIsRunning(false);
+        setIsPaused(false);
+        setActiveEndTime(null);
+        persistTimerState();
+      }
+    };
+    tick();
+    const interval = setInterval(tick, 1000);
+    return () => clearInterval(interval);
+  }, [activeEndTime, isRunning]);
+
+  useEffect(() => {
+    setHasInitializedData(false);
+  }, [workoutId, scheduledWorkoutId]);
 
   // Initialize exercise data
   useEffect(() => {
-    if (open) {
-      if (exercises && exercises.length > 0) {
-        const data: ExerciseData[] = exercises.map((ex, idx) => {
-          const exerciseId = ex.exercise_id || ex.id || ex.exercise?.id || '';
-          const exerciseName = ex.exercise?.name || ex.name || `Exercise ${idx + 1}`;
-          const setsCount = ex.sets || 3;
-          const repsCount = ex.reps || 10;
-          
-          return {
-            exercise_id: exerciseId,
-            exercise_name: exerciseName,
-            planned_sets: setsCount,
-            planned_reps: repsCount,
-            sets: Array.from({ length: setsCount }, (_, i) => ({
-              set_number: i + 1,
-              completed: false,
-              failure: false,
-            })),
-          };
-        });
-        setExerciseData(data);
-        setCurrentExerciseIndex(0);
-      } else {
-        // If no exercises provided, create empty state
-        setExerciseData([]);
-      }
-      setTimeRemaining(durationMinutes * 60);
-      setIsRunning(false);
-      setIsPaused(false);
-    }
-  }, [open, exercises, durationMinutes]);
+    if (!open || hasInitializedData) return;
+    if (exercises && exercises.length > 0) {
+      const data: ExerciseData[] = exercises.map((ex, idx) => {
+        const exerciseId = ex.exercise_id || ex.id || ex.exercise?.id || '';
+        const exerciseName = ex.exercise?.name || ex.name || `Exercise ${idx + 1}`;
+        const setsCount = ex.sets || 3;
+        const repsCount = ex.reps || 10;
 
-  // Timer logic
-  useEffect(() => {
-    if (isRunning && timeRemaining > 0) {
-      const interval = setInterval(() => {
-        setTimeRemaining((prev) => {
-          if (prev <= 1) {
-            setIsRunning(false);
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-      return () => clearInterval(interval);
+        return {
+          exercise_id: exerciseId,
+          exercise_name: exerciseName,
+          planned_sets: setsCount,
+          planned_reps: repsCount,
+          sets: Array.from({ length: setsCount }, (_, i) => ({
+            set_number: i + 1,
+            completed: false,
+            failure: false,
+          })),
+        };
+      });
+      setExerciseData(data);
+      setCurrentExerciseIndex(0);
+    } else {
+      setExerciseData([]);
     }
-  }, [isRunning, timeRemaining]);
+    setHasInitializedData(true);
+  }, [open, exercises, hasInitializedData]);
 
   const handlePlay = () => {
-    if (timeRemaining === 0) {
-      setTimeRemaining(durationMinutes * 60);
-    }
+    if (baseDuration === 0) return;
+    const currentRemaining = timeRemaining === 0 ? baseDuration : timeRemaining;
+    setTimeRemaining(currentRemaining);
     setIsRunning(true);
     setIsPaused(false);
+    const newEndTime = Date.now() + currentRemaining * 1000;
+    setActiveEndTime(newEndTime);
+    persistTimerState({ mode: 'running', endTime: newEndTime });
   };
 
   const handlePause = () => {
     setIsRunning(false);
     setIsPaused(true);
+    setActiveEndTime(null);
+    persistTimerState({ mode: 'paused', remainingSeconds: timeRemaining });
   };
 
   const handleReset = () => {
     setIsRunning(false);
     setIsPaused(false);
-    setTimeRemaining(durationMinutes * 60);
+    setTimeRemaining(baseDuration);
+    setActiveEndTime(null);
+    persistTimerState();
   };
 
   const updateSet = (exerciseIdx: number, setIdx: number, updates: Partial<ExerciseSet>) => {
@@ -239,6 +313,12 @@ export function WorkoutTracker({
         await workoutsApi.createSetLogs(logs);
       }
 
+      persistTimerState();
+      setActiveEndTime(null);
+      setIsRunning(false);
+      setIsPaused(false);
+      setTimeRemaining(baseDuration);
+      setHasInitializedData(false);
       onOpenChange(false);
     } catch (error) {
       console.error('Failed to save workout data:', error);
@@ -265,7 +345,7 @@ export function WorkoutTracker({
     return null;
   }
 
-  const progress = durationMinutes > 0 ? ((durationMinutes * 60 - timeRemaining) / (durationMinutes * 60)) * 100 : 0;
+  const progress = baseDuration > 0 ? ((baseDuration - timeRemaining) / baseDuration) * 100 : 0;
   const currentExercise = exerciseData[currentExerciseIndex];
 
   return (

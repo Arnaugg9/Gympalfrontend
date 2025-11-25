@@ -1,5 +1,5 @@
 import { http } from '@/lib/http';
-import type { Message, Conversation, SendMessageRequest, AIChatResponse } from '../types';
+import type { Message, Conversation, SendMessageRequest, AIChatResponse, AiContextSummary } from '../types';
 
 // Update baseUrl to point to the correct backend route prefix
 const baseUrl = '/api/v1/ai/chat';
@@ -41,6 +41,14 @@ export const aiChatApi = {
     http.delete<{ data: { success: boolean } }>(`${baseUrl}/conversations/${conversationId}`),
 
   /**
+   * Rename a conversation
+   * @param conversationId - The ID of the conversation to rename
+   * @param title - New title for the conversation
+   */
+  renameConversation: (conversationId: string, title: string) =>
+    http.patch<{ data: Conversation }>(`${baseUrl}/conversations/${conversationId}`, { title }),
+
+  /**
    * Send a message to an AI Agent
    * @param text - The user's message text
    * @param conversationId - Optional conversation ID to continue a thread
@@ -59,4 +67,10 @@ export const aiChatApi = {
    */
   getHistory: () =>
     http.get<{ data: { messages: any[] } }>(`${baseUrl}/history`),
+
+  /**
+   * Get summarized user context (profile/personal info completeness)
+   */
+  getContextSummary: () =>
+    http.get<{ data: AiContextSummary }>(`${baseUrl}/context`),
 };

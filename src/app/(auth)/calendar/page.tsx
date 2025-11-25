@@ -1,6 +1,4 @@
 'use client';
-
-import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Calendar as CalendarIcon, ChevronLeft, ChevronRight, Plus, Dumbbell, Check, X, Play } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -185,8 +183,9 @@ export default function CalendarPage() {
       await calendarApi.addWorkout(routineId, selectedDate, annotations.trim() || undefined);
 
       // Show a brief confirmation to the user
-      setAddSuccess('Workout scheduled');
-      setToast({ message: 'Workout scheduled', type: 'success' });
+      const scheduleMessage = t('calendar.toastScheduleSuccess', { defaultValue: 'Workout scheduled' });
+      setAddSuccess(scheduleMessage);
+      setToast({ message: scheduleMessage, type: 'success' });
       setTimeout(() => setAddSuccess(''), 3000);
       setTimeout(() => setToast(null), 3000);
 
@@ -228,20 +227,29 @@ export default function CalendarPage() {
     const entry = dayToEntry[selectedDate];
     const scheduledId = entry?.id;
     if (!scheduledId) {
-      setToast({ message: 'Unable to locate scheduled entry id', type: 'error' });
+      setToast({
+        message: t('calendar.toastMissingId', { defaultValue: 'Unable to locate scheduled entry id' }),
+        type: 'error',
+      });
       setTimeout(() => setToast(null), 4000);
       return;
     }
 
     try {
       await calendarApi.completeScheduled(String(scheduledId));
-      setToast({ message: 'Workout marked as completed! 🎉', type: 'success' });
+      setToast({
+        message: t('calendar.toastCompleteSuccess', { defaultValue: 'Workout marked as completed! 🎉' }),
+        type: 'success',
+      });
       const year = currentMonth.getFullYear();
       const month = currentMonth.getMonth() + 1;
       const updatedDays = await calendarApi.getMonth(month, year);
       setCalendarData(updatedDays);
     } catch (err) {
-      setToast({ message: 'Failed to mark as completed', type: 'error' });
+      setToast({
+        message: t('calendar.toastCompleteError', { defaultValue: 'Failed to mark as completed' }),
+        type: 'error',
+      });
     } finally {
       setIsViewWorkoutDialogOpen(false);
       setSelectedDate(null);
@@ -259,20 +267,29 @@ export default function CalendarPage() {
     const entry = dayToEntry[selectedDate];
     const scheduledId = entry?.id;
     if (!scheduledId) {
-      setToast({ message: 'Unable to locate scheduled entry id', type: 'error' });
+      setToast({
+        message: t('calendar.toastMissingId', { defaultValue: 'Unable to locate scheduled entry id' }),
+        type: 'error',
+      });
       setTimeout(() => setToast(null), 4000);
       return;
     }
 
     try {
       await calendarApi.deleteScheduled(String(scheduledId));
-      setToast({ message: 'Scheduled workout deleted', type: 'success' });
+      setToast({
+        message: t('calendar.toastDeleteSuccess', { defaultValue: 'Scheduled workout deleted' }),
+        type: 'success',
+      });
       const year = currentMonth.getFullYear();
       const month = currentMonth.getMonth() + 1;
       const updatedDays = await calendarApi.getMonth(month, year);
       setCalendarData(updatedDays);
     } catch (err) {
-      setToast({ message: 'Failed to delete scheduled workout', type: 'error' });
+      setToast({
+        message: t('calendar.toastDeleteError', { defaultValue: 'Failed to delete scheduled workout' }),
+        type: 'error',
+      });
     } finally {
       setIsViewWorkoutDialogOpen(false);
       setSelectedDate(null);
@@ -386,7 +403,7 @@ export default function CalendarPage() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-4xl font-bold text-slate-900 dark:text-white mb-2">{t('calendar.title')}</h1>
@@ -397,52 +414,47 @@ export default function CalendarPage() {
             {addSuccess}
           </div>
         )}
-        <Link href="/ai-chat">
-          <Button className="bg-gradient-to-r from-purple-500 to-purple-600 hover:from-purple-600 hover:to-purple-700 text-white shadow-lg hover:shadow-purple-500/50 transition-all">
-            {t('calendar.aiButton', { title: t('calendar.title') })}
-          </Button>
-        </Link>
-      </div>
-
-      {/* View Mode Filter */}
-      <div className="flex gap-2 flex-wrap">
-        {(['day', 'week', 'month', 'year'] as const).map((mode) => (
-          <Button
-            key={mode}
-            onClick={() => setViewMode(mode)}
-            variant={viewMode === mode ? 'default' : 'outline'}
-            className={`capitalize ${viewMode === mode
-              ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500'
-              : 'border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
-              }`}
-          >
-            {t(`common.${mode}` as any) === `common.${mode}` ? mode : t(`common.${mode}` as any)}
-          </Button>
-        ))}
       </div>
 
       {/* Calendar */}
       <Card className="glass-card card-gradient-blue border-slate-200 dark:border-slate-700">
         <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-slate-900 dark:text-white capitalize">{getDisplayTitle()}</CardTitle>
-            <div className="flex gap-2">
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                onClick={prevHandler()}
-              >
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button
-                variant="outline"
-                size="sm"
-                className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
-                onClick={nextHandler()}
-              >
-                <ChevronRight className="h-4 w-4" />
-              </Button>
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="flex items-center justify-between gap-3">
+              <CardTitle className="text-slate-900 dark:text-white capitalize">{getDisplayTitle()}</CardTitle>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  onClick={prevHandler()}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  className="border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700"
+                  onClick={nextHandler()}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            </div>
+            <div className="flex gap-2 flex-wrap justify-end">
+              {(['day', 'week', 'month', 'year'] as const).map((mode) => (
+                <Button
+                  key={mode}
+                  onClick={() => setViewMode(mode)}
+                  variant={viewMode === mode ? 'default' : 'outline'}
+                  className={`capitalize ${viewMode === mode
+                    ? 'bg-emerald-500 hover:bg-emerald-600 text-white border-emerald-500'
+                    : 'border-slate-300 dark:border-slate-600 text-slate-700 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-700'
+                    }`}
+                >
+                  {t(`common.${mode}` as any) === `common.${mode}` ? mode : t(`common.${mode}` as any)}
+                </Button>
+              ))}
             </div>
           </div>
         </CardHeader>

@@ -66,22 +66,21 @@ export default function ChatWidget() {
             </span>
           </div>
           <div ref={scrollContainerRef} className="flex-1 p-3 overflow-auto space-y-2">
-            {messages.map((m, i) => (
-              <div
-                key={i}
-                className={`text-sm p-2 rounded-lg ${
-                  m.role === 'assistant'
-                    ? 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 mr-8'
-                    : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 ml-8 text-right'
-                }`}
-              >
-                {m.role === 'assistant' ? (
-                  <AiMarkdown content={m.content} />
-                ) : (
-                  <span className="whitespace-pre-wrap break-words">{m.content}</span>
-                )}
-              </div>
-            ))}
+            {messages.map((m, i) => {
+              const isAssistant = m.role === 'assistant';
+              return (
+                <div
+                  key={i}
+                  className={`text-sm p-2 rounded-lg ${
+                    isAssistant
+                      ? 'bg-slate-100 dark:bg-slate-700 text-slate-700 dark:text-slate-200 mr-8'
+                      : 'bg-emerald-100 dark:bg-emerald-900/30 text-emerald-800 dark:text-emerald-200 ml-8 text-right'
+                  }`}
+                >
+                  <AiMarkdown content={m.content} className="text-current" />
+                </div>
+              );
+            })}
           </div>
           <div className="p-2 border-t border-slate-200 dark:border-slate-700 flex gap-2">
             <input 
