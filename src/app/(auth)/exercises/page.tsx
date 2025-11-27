@@ -2,6 +2,7 @@
 
 import { useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
+import { useTranslation } from 'react-i18next';
 import { Card, CardContent } from '@/components/ui/card';
 import { ArrowLeft, Search, Check, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
@@ -23,6 +24,7 @@ const MUSCLE_GROUPS = [
 ];
 
 export default function ExercisesPage() {
+  const { t } = useTranslation();
   const router = useRouter();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedMuscleGroup, setSelectedMuscleGroup] = useState<string>('all');
@@ -38,7 +40,7 @@ export default function ExercisesPage() {
   };
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !window.localStorage) return;
     try {
       const stored = localStorage.getItem('workoutFormExercises');
       if (stored) {
@@ -146,6 +148,23 @@ export default function ExercisesPage() {
   };
 
   const handleSave = () => {
+    // Check if localStorage is available (browser compatibility)
+    if (typeof window === 'undefined' || !window.localStorage) {
+      router.back();
+      return;
+    }
+    
+    // Get existing exercises from localStorage to preserve sets/reps/weight
+    let existingExercises: any[] = [];
+    try {
+      const stored = localStorage.getItem('workoutFormExercises');
+      if (stored) {
+        existingExercises = JSON.parse(stored);
+      }
+    } catch {
+      // ignore parse errors
+    }
+
     // Save selected exercises to localStorage so they persist across navigation
     if (selectedExercises.length > 0) {
       const selectedExerciseData: any[] = [];
@@ -156,7 +175,22 @@ export default function ExercisesPage() {
           persistedExerciseMap[selectedId];
 
         if (exercise) {
-          selectedExerciseData.push(exercise);
+          // Find existing exercise data to preserve sets/reps/weight
+          const existing = existingExercises.find(
+            (ex) => getExerciseId(ex) === getExerciseId(exercise)
+          );
+
+          // Create exercise data with preserved or default values
+          const exerciseData: any = {
+            id: getExerciseId(exercise),
+            name: exercise.name || 'Unknown Exercise',
+            exercise_id: getExerciseId(exercise),
+            sets: existing?.sets || 3,
+            reps: existing?.reps || 10,
+            weight: existing?.weight || 0,
+          };
+
+          selectedExerciseData.push(exerciseData);
         }
       });
 
@@ -164,6 +198,15 @@ export default function ExercisesPage() {
     } else {
       localStorage.removeItem('workoutFormExercises');
     }
+    
+    // Check if we're in edit mode - if not, clear workoutEditId to avoid conflicts
+    const editId = localStorage.getItem('workoutEditId');
+    if (!editId) {
+      // We're in create mode, ensure editId is cleared
+      localStorage.removeItem('workoutEditId');
+    }
+    // If editId exists, we're in edit mode, so keep it
+    
     router.back();
   };
 
@@ -299,10 +342,10 @@ export default function ExercisesPage() {
                                 e.stopPropagation();
                               router.push(`/exercises/${exerciseId}`);
                               }}
-                            title="Ver detalles"
+                            title={t('common.viewDetails', { defaultValue: 'Ver Detalles' })}
                             >
                             <Eye className="h-4 w-4 mr-1" />
-                            Ver detalles
+                            {t('common.viewDetails', { defaultValue: 'Ver Detalles' })}
                             </Button>
                           <div className={`w-6 h-6 rounded-full border-2 flex items-center justify-center ${
                             isSelected ? 'border-emerald-500 bg-emerald-500' : 'border-slate-600'

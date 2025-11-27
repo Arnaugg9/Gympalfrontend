@@ -32,6 +32,7 @@ function setCookie(name: string, value: string, seconds = 60 * 60 * 24, path = '
 
 function deleteCookie(name: string, path = '/') {
   try {
+
     document.cookie = `${name}=; Path=${path}; Expires=Thu, 01 Jan 1970 00:00:00 GMT; SameSite=Lax`;
   } catch (e) {
     void e;

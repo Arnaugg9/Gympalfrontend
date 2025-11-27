@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useState, useCallback } from 'react';
+import { useEffect, useMemo, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -98,6 +98,13 @@ export default function SocialPage() {
   const [deleteCommentDialog, setDeleteCommentDialog] = useState<{ open: boolean; postId: string | null; commentId: string | null }>({ open: false, postId: null, commentId: null });
   const [comments, setComments] = useState<Record<string, Comment[]>>({});
   const [showComments, setShowComments] = useState<Record<string, boolean>>({});
+  // Use ref to access current comments state in callbacks
+  const commentsRef = useRef<Record<string, Comment[]>>({});
+  
+  // Keep ref in sync with state
+  useEffect(() => {
+    commentsRef.current = comments;
+  }, [comments]);
   const [commentContent, setCommentContent] = useState<Record<string, string>>({});
   const [publishError, setPublishError] = useState('');
   const [replyingTo, setReplyingTo] = useState<{ postId: string; commentId: string } | null>(null);
@@ -444,45 +451,72 @@ export default function SocialPage() {
   };
 
   const handleLike = useCallback(async (postId: string) => {
+    // Prevent double-clicking by checking if already processing
+    // Declare wasLiked outside try-catch so it's accessible in both blocks
+    const wasLiked = liked[postId] || false;
+    
     try {
-      await socialApi.like(postId);
+      // Optimistically update UI state first
       setLiked((prev) => ({ ...prev, [postId]: !prev[postId] }));
-      // Optimistically update like count
+      
+      // Optimistically update like count (before API call)
       setPosts((prev) => prev.map((p) => {
         if (p.id === postId) {
-          return { ...p, likesCount: (p.likesCount || 0) + (liked[postId] ? -1 : 1) };
+          return { ...p, likesCount: Math.max(0, (p.likesCount || 0) + (wasLiked ? -1 : 1)) };
         }
         if (p.isRepost && p.originalPost?.id === postId) {
           return {
             ...p,
             originalPost: {
               ...p.originalPost,
-              likesCount: (p.originalPost.likesCount || 0) + (liked[postId] ? -1 : 1),
+              likesCount: Math.max(0, (p.originalPost.likesCount || 0) + (wasLiked ? -1 : 1)),
             },
           };
         }
         return p;
       }));
+      
+      // Call API
+      await socialApi.like(postId);
     } catch (err) {
       console.error('Failed to like post', err);
-    }
-  }, [liked]);
-
-  const handleRepost = useCallback(async (postId: string) => {
-    try {
-      await socialApi.repost(postId);
-      setReposted((prev) => ({ ...prev, [postId]: !prev[postId] }));
-      // Optimistically update repost count
+      // Revert optimistic update on error
+      setLiked((prev) => ({ ...prev, [postId]: !prev[postId] }));
       setPosts((prev) => prev.map((p) => {
         if (p.id === postId) {
-          return { ...p, reposts_count: (p.reposts_count || 0) + (reposted[postId] ? -1 : 1) };
+          return { ...p, likesCount: Math.max(0, (p.likesCount || 0) - (wasLiked ? -1 : 1)) };
         }
         if (p.isRepost && p.originalPost?.id === postId) {
           return {
             ...p,
             originalPost: {
               ...p.originalPost,
-              reposts_count: (p.originalPost.reposts_count || 0) + (reposted[postId] ? -1 : 1),
+              likesCount: Math.max(0, (p.originalPost.likesCount || 0) - (wasLiked ? -1 : 1)),
+            },
+          };
+        }
+        return p;
+      }));
+    }
+  }, [liked]);
+
+  const handleRepost = useCallback(async (postId: string) => {
+    const wasReposted = reposted[postId];
+    try {
+      await socialApi.repost(postId);
+      const newRepostedState = !wasReposted;
+      setReposted((prev) => ({ ...prev, [postId]: newRepostedState }));
+      // Optimistically update repost count - only update once
+      setPosts((prev) => prev.map((p) => {
+        if (p.id === postId) {
+          return { ...p, reposts_count: Math.max(0, (p.reposts_count || 0) + (newRepostedState ? 1 : -1)) };
+        }
+        if (p.isRepost && p.originalPost?.id === postId) {
+          return {
+            ...p,
+            originalPost: {
+              ...p.originalPost,
+              reposts_count: Math.max(0, (p.originalPost.reposts_count || 0) + (newRepostedState ? 1 : -1)),
             },
           };
         }
@@ -554,10 +588,15 @@ export default function SocialPage() {
   }, [deletePostDialog.postId, t]);
 
   const handleLoadComments = useCallback(async (postId: string) => {
-    if (comments[postId]) {
+    // Check if comments are already loaded using ref to get current state
+    const currentComments = commentsRef.current;
+    if (currentComments[postId] && currentComments[postId].length > 0) {
+      // Comments already loaded, toggle visibility
       setShowComments((prev) => ({ ...prev, [postId]: !prev[postId] }));
       return;
     }
+
+    // If comments are not loaded, fetch them and show
     setLoading(true);
     try {
       const res = await socialApi.comments(postId);
@@ -572,6 +611,7 @@ export default function SocialPage() {
       setComments((prev) => ({ ...prev, [postId]: mappedComments }));
       setShowComments((prev) => ({ ...prev, [postId]: true }));
     } catch (err) {
+      console.error('Failed to load comments:', err);
     } finally {
       setLoading(false);
     }
@@ -776,6 +816,7 @@ export default function SocialPage() {
               followed={followed}
               reposted={reposted}
               initialReposted={initialReposted}
+              showComments={showComments}
               onLike={handleLike}
               onFollow={handleFollow}
               onRepost={handleRepost}

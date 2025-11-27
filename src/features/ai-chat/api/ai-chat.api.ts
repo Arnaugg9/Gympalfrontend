@@ -53,10 +53,14 @@ export const aiChatApi = {
    * @param text - The user's message text
    * @param conversationId - Optional conversation ID to continue a thread
    * @param signal - Optional AbortSignal to cancel the request
+   * @param agentType - Optional agent type ('reception' or 'routine'). 
+   *   - 'reception': Direct communication with reception agent
+   *   - 'routine': Chains data agent -> recommend-exercises to generate workout routines
+   *   Defaults to 'reception'
    * @returns The agent's response
    */
-  chatWithAgent: (text: string, conversationId?: string, signal?: AbortSignal) =>
-    http.post<{ data: { response: string } }>(`${baseUrl}/agent`, { text, conversationId }, { 
+  chatWithAgent: (text: string, conversationId?: string, signal?: AbortSignal, agentType?: 'reception' | 'routine') =>
+    http.post<{ data: { response: string } }>(`${baseUrl}/agent`, { text, conversationId, agentType }, { 
       signal,
       timeout: 0 // No timeout for AI generation
     } as any),

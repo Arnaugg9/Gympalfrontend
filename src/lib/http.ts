@@ -24,6 +24,7 @@ type HttpMethod = 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 async function refreshAccessToken(): Promise<string | null> {
   const refresh = getRefreshToken();
   if (!refresh) return null;
+  
   try {
     const startedAt = Date.now();
     apiLogger.debug({ path: '/api/v1/auth/refresh' }, 'Refreshing access token');
@@ -71,12 +72,12 @@ interface CustomRequestInit extends RequestInit {
   timeout?: number;
 }
 
-async function request<T>(path: string, options: CustomRequestInit = {}): Promise<T> {
+async function request<T>(path: string, options: CustomRequestInit = {}): Promise<T> {  
   const url = joinUrl(path);
   let token = getAccessToken();
   // Don't set Content-Type for FormData - browser will set it with correct boundary
   const headers: HeadersInit = {
-    ...(!( options.body instanceof FormData) && { 'Content-Type': 'application/json' }),
+    ...(!(options.body instanceof FormData) && { 'Content-Type': 'application/json' }),
     ...(options.headers || {}),
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
@@ -84,13 +85,15 @@ async function request<T>(path: string, options: CustomRequestInit = {}): Promis
   // Default timeout of 120 seconds (2 minutes) to handle slow AI responses
   // If timeout is 0, disable timeout
   const timeout = options.timeout !== undefined ? options.timeout : 120000;
+  
   const controller = new AbortController();
   let id: NodeJS.Timeout | undefined;
   
   if (timeout > 0) {
     id = setTimeout(() => controller.abort(), timeout);
   }
-  
+
+
   const method = (options.method || 'GET') as HttpMethod;
   const startedAt = Date.now();
   apiLogger.debug({ method, path, url }, 'HTTP request start');

@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
@@ -78,6 +78,13 @@ export default function EditWorkoutPage() {
           }));
           
           setSelectedExercises(exercises);
+          previousExercisesRef.current = exercises;
+          
+          // Also save to localStorage for persistence when navigating to exercises page
+          // Check if localStorage is available (browser compatibility)
+          if (typeof window !== 'undefined' && window.localStorage) {
+            localStorage.setItem('workoutFormExercises', JSON.stringify(exercises));
+          }
         }
       } catch (err: any) {
         console.error('Failed to load workout:', err);
@@ -91,6 +98,170 @@ export default function EditWorkoutPage() {
     })();
     return () => { mounted = false; };
   }, [params.id]);
+
+  // Store a ref to track previous exercises for comparison
+  const previousExercisesRef = useRef<any[]>([]);
+
+  /**
+   * Sync exercises from localStorage when returning from exercises page
+   * Uses multiple strategies to ensure reliable synchronization
+   */
+  useEffect(() => {
+    if (!isInitialized) return;
+    
+    const syncExercises = () => {
+      try {
+        // Check if localStorage is available (browser compatibility)
+        if (typeof window === 'undefined' || !window.localStorage) return;
+        
+        const editId = localStorage.getItem('workoutEditId');
+        // Only sync if we're in edit mode for this workout
+        if (editId !== params.id) return;
+        
+        const storedExercises = localStorage.getItem('workoutFormExercises');
+        
+        if (storedExercises) {
+          const exercises: any[] = JSON.parse(storedExercises);
+          
+          // Normalize exercise IDs for comparison
+          const normalizeExerciseId = (ex: any): string => {
+            return String(ex.id || ex.exercise_id || ex.uuid || ex._id || '');
+          };
+          
+          // Get current exercises from ref (to avoid infinite loops)
+          const currentExercises = previousExercisesRef.current;
+          
+          // Create a map of current exercises by ID for quick lookup
+          const currentExercisesMap = new Map<string, any>();
+          currentExercises.forEach((ex) => {
+            const id = normalizeExerciseId(ex);
+            if (id) currentExercisesMap.set(id, ex);
+          });
+          
+          // Process stored exercises, preserving sets/reps/weight from current state if they exist
+          const updatedExercises = exercises.map((ex: any) => {
+            const exerciseId = normalizeExerciseId(ex);
+            const existing = exerciseId ? currentExercisesMap.get(exerciseId) : null;
+            
+            return {
+              id: exerciseId || ex.id || ex.exercise_id || ex.uuid || ex._id,
+              name: ex.name || 'Unknown Exercise',
+              exercise_id: exerciseId || ex.exercise_id || ex.id || ex.uuid || ex._id,
+              sets: ex.sets !== undefined ? ex.sets : (existing?.sets !== undefined ? existing.sets : 3),
+              reps: ex.reps !== undefined ? ex.reps : (existing?.reps !== undefined ? existing.reps : 10),
+              weight: ex.weight !== undefined ? ex.weight : (existing?.weight !== undefined ? existing.weight : 0),
+            };
+          });
+          
+          // Simple comparison: check if the number of exercises changed or if IDs are different
+          const currentIds = new Set(currentExercises.map((ex: any) => normalizeExerciseId(ex)).filter(Boolean));
+          const updatedIds = new Set(updatedExercises.map((ex: any) => normalizeExerciseId(ex)).filter(Boolean));
+          
+          // Check if exercises were added, removed, or changed
+          const lengthChanged = currentExercises.length !== updatedExercises.length;
+          
+          // Check if any IDs are different (more reliable than checking if all match)
+          // This specifically checks for NEW IDs (exercises added)
+          const hasNewIds = Array.from(updatedIds).some((id: string) => !currentIds.has(id));
+          // This checks for REMOVED IDs (exercises removed)
+          const hasRemovedIds = Array.from(currentIds).some((id: string) => !updatedIds.has(id));
+          // Check if sizes are different
+          const sizeChanged = currentIds.size !== updatedIds.size;
+          
+          // Always update if we detect ANY change:
+          // - Length changed (added or removed exercises)
+          // - New IDs found (exercises added)
+          // - Removed IDs found (exercises removed)
+          // - Size changed (different number of valid IDs)
+          if (lengthChanged || hasNewIds || hasRemovedIds || sizeChanged) {
+            previousExercisesRef.current = updatedExercises;
+            setSelectedExercises(updatedExercises);
+            return;
+          }
+          
+          // If same exercises, check if any data changed (sets, reps, weight)
+          if (currentExercises.length === updatedExercises.length) {
+            const currentMap = new Map<string, any>();
+            currentExercises.forEach(ex => {
+              const id = normalizeExerciseId(ex);
+              if (id) currentMap.set(id, ex);
+            });
+            
+            const updatedMap = new Map<string, any>();
+            updatedExercises.forEach(ex => {
+              const id = normalizeExerciseId(ex);
+              if (id) updatedMap.set(id, ex);
+            });
+            
+            // Check if any exercise data changed
+            let dataChanged = false;
+            for (const [id, currentEx] of currentMap) {
+              const updatedEx = updatedMap.get(id);
+              if (updatedEx && (
+                currentEx.sets !== updatedEx.sets ||
+                currentEx.reps !== updatedEx.reps ||
+                currentEx.weight !== updatedEx.weight
+              )) {
+                dataChanged = true;
+                break;
+              }
+            }
+            
+            if (dataChanged) {
+              previousExercisesRef.current = updatedExercises;
+              setSelectedExercises(updatedExercises);
+            }
+          }
+        } else {
+          // If localStorage is empty, clear exercises (user removed all)
+          if (previousExercisesRef.current.length > 0) {
+            previousExercisesRef.current = [];
+            setSelectedExercises([]);
+          }
+        }
+      } catch (err) {
+        console.error('Failed to load exercises from localStorage:', err);
+      }
+    };
+
+    // Check immediately
+    syncExercises();
+    
+    // Check periodically while page is active (every 500ms)
+    const interval = setInterval(syncExercises, 500);
+    
+    // Check when page becomes visible (with browser compatibility)
+    const handleVisibilityChange = () => {
+      if (typeof document !== 'undefined' && document.visibilityState === 'visible') {
+        syncExercises();
+      }
+    };
+    
+    // Check on focus (with browser compatibility)
+    const handleFocus = () => {
+      if (typeof window !== 'undefined') {
+        syncExercises();
+      }
+    };
+    
+    // Add event listeners only if available (browser compatibility)
+    if (typeof document !== 'undefined' && document.addEventListener) {
+      document.addEventListener('visibilitychange', handleVisibilityChange);
+    }
+    if (typeof window !== 'undefined' && window.addEventListener) {
+      window.addEventListener('focus', handleFocus);
+    }
+    
+    return () => {
+      clearInterval(interval);
+      if (typeof document !== 'undefined' && document.removeEventListener) {
+        document.removeEventListener('visibilitychange', handleVisibilityChange);
+      }
+      if (typeof window !== 'undefined' && window.removeEventListener) {
+        window.removeEventListener('focus', handleFocus);
+      }
+    };
+  }, [isInitialized, params.id]);
 
   /**
    * Handle form submission
@@ -150,6 +321,10 @@ export default function EditWorkoutPage() {
 
       // Update existing workout
       await workoutsApi.update(params.id as string, payload);
+      
+      // Clear localStorage after successful update
+      localStorage.removeItem('workoutEditId');
+      localStorage.removeItem('workoutFormExercises');
       
       // Redirect to workout detail page
       router.push(`/workouts/${params.id}`);
@@ -317,7 +492,13 @@ export default function EditWorkoutPage() {
               <CardTitle className="text-white flex items-center justify-between">
                 {t('workouts.selectedExercises')} *
                 <Button
-                  onClick={() => router.push('/exercises')}
+                  onClick={() => {
+                    // Save current workout ID to localStorage so exercises page knows we're editing
+                    localStorage.setItem('workoutEditId', params.id as string);
+                    // Save current exercises to localStorage so exercises page can pre-select them
+                    localStorage.setItem('workoutFormExercises', JSON.stringify(selectedExercises));
+                    router.push('/exercises');
+                  }}
                   className="bg-emerald-500 hover:bg-emerald-600 text-white"
                   disabled={saving}
                   size="sm"
@@ -347,7 +528,13 @@ export default function EditWorkoutPage() {
                         variant="ghost"
                         size="sm"
                         className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
-                        onClick={() => setSelectedExercises((prev) => prev.filter((_, i) => i !== index))}
+                        onClick={() => {
+                          const updated = selectedExercises.filter((_, i) => i !== index);
+                          setSelectedExercises(updated);
+                          previousExercisesRef.current = updated;
+                          // Update localStorage to keep in sync
+                          localStorage.setItem('workoutFormExercises', JSON.stringify(updated));
+                        }}
                         disabled={saving}
                       >
                         <X className="h-4 w-4" />

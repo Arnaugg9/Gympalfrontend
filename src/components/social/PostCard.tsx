@@ -51,6 +51,7 @@ type PostCardProps = {
   followed: Record<string, boolean>;
   reposted: Record<string, boolean>;
   initialReposted: Record<string, boolean>;
+  showComments?: Record<string, boolean>;
   onLike: (postId: string) => void;
   onFollow: (userId: string) => void;
   onRepost: (postId: string) => void;
@@ -67,6 +68,7 @@ const PostCard = memo(function PostCard({
   followed,
   reposted,
   initialReposted,
+  showComments = {},
   onLike,
   onFollow,
   onRepost,
@@ -305,7 +307,7 @@ const PostCard = memo(function PostCard({
               }`}
             >
               <Heart className={`h-5 w-5 mr-2 group-hover:scale-110 transition-transform ${isLiked ? 'fill-current' : ''}`} />
-              <span className="text-sm">{(displayPost.likesCount ?? 0) + ((liked[displayPost.id] && !displayPost.isLiked) ? 1 : 0)}</span>
+              <span className="text-sm">{displayPost.likesCount ?? 0}</span>
             </Button>
             <Button
               variant="ghost"
@@ -321,7 +323,7 @@ const PostCard = memo(function PostCard({
               }`}
             >
               <Repeat2 className={`h-5 w-5 mr-2 group-hover:scale-110 transition-transform ${isReposted ? 'fill-current' : ''}`} />
-              <span className="text-sm">{Math.max(0, (displayPost.reposts_count || 0) + (isReposted && !initialReposted[displayPost.id] ? 1 : 0) - (!isReposted && initialReposted[displayPost.id] ? 1 : 0))}</span>
+              <span className="text-sm">{displayPost.reposts_count ?? 0}</span>
             </Button>
             <Button
               variant="ghost"
@@ -330,7 +332,11 @@ const PostCard = memo(function PostCard({
                 e.stopPropagation();
                 onLoadComments(displayPost.id);
               }}
-              className="group h-9 px-3 rounded-full hover:bg-blue-50 dark:hover:bg-blue-950/20 text-slate-600 dark:text-slate-400 hover:text-blue-500 transition-colors"
+              className={`group h-9 px-3 rounded-full transition-colors ${
+                showComments[displayPost.id]
+                  ? 'bg-blue-50 dark:bg-blue-950/20 text-blue-500'
+                  : 'hover:bg-blue-50 dark:hover:bg-blue-950/20 text-slate-600 dark:text-slate-400 hover:text-blue-500'
+              }`}
             >
               <MessageCircle className="h-5 w-5 mr-2 group-hover:scale-110 transition-transform" />
               <span className="text-sm">{displayPost.commentsCount ?? 0}</span>

@@ -401,72 +401,313 @@ export default function ProgressPage() {
         </Card>
       </div>
 
-      {/* Info Card */}
-      <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300">
-        <CardHeader>
-          <CardTitle className="text-slate-900 dark:text-white">{t('progress.title')}</CardTitle>
-          <CardDescription className="text-slate-600 dark:text-slate-400">{t('progress.subtitle')}</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
-              <div>
-                <p className="text-slate-900 dark:text-white font-semibold">{t('progress.totalWorkouts')}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.allTime')}</p>
+      {/* Statistics Tables - 2 per row */}
+      <div className="grid md:grid-cols-2 gap-6">
+        {/* Workouts Statistics Table */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300">
+          <CardHeader>
+            <CardTitle className="text-slate-900 dark:text-white">{t('progress.workouts', { defaultValue: 'Workouts' })}</CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">{t('progress.workoutStatistics', { defaultValue: 'Workout statistics by period' })}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.totalWorkouts')}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.allTime')}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{completedAll}</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-xl font-bold text-slate-900 dark:text-white">{completedAll}</p>
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.thisYear', { defaultValue: 'This Year' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.workouts')} {t('progress.thisYear', { defaultValue: 'this year' }).toLowerCase()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{workoutsThisYear}</p>
+                </div>
               </div>
-            </div>
-            <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
-              <div>
-                <p className="text-slate-900 dark:text-white font-semibold">{t('progress.thisMonth')}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.workouts')} {t('progress.thisMonth').toLowerCase()}</p>
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.thisMonth')}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.workouts')} {t('progress.thisMonth').toLowerCase()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{workoutsThisMonth}</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-xl font-bold text-slate-900 dark:text-white">{workoutsThisMonth}</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
-              <div>
-                <p className="text-slate-900 dark:text-white font-semibold">{t('progress.thisWeek')}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.workouts')} {t('progress.thisWeek').toLowerCase()}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xl font-bold text-slate-900 dark:text-white">{workoutsThisWeek}</p>
-              </div>
-            </div>
-            {/* Exercise counts */}
-            <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
-              <div>
-                <p className="text-slate-900 dark:text-white font-semibold">{t('progress.totalExercises', { defaultValue: 'Total Exercises' })}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.allTime')}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xl font-bold text-slate-900 dark:text-white">{exerciseCountAll}</p>
-              </div>
-            </div>
-            <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
-              <div>
-                <p className="text-slate-900 dark:text-white font-semibold">{t('progress.thisMonth')}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.exercises', { defaultValue: 'Exercises' })} {t('progress.thisMonth').toLowerCase()}</p>
-              </div>
-              <div className="text-right">
-                <p className="text-xl font-bold text-slate-900 dark:text-white">{exerciseCountMonth}</p>
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.thisWeek')}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.workouts')} {t('progress.thisWeek').toLowerCase()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{workoutsThisWeek}</p>
+                </div>
               </div>
             </div>
-            <div className="flex items-center justify-between py-3">
-              <div>
-                <p className="text-slate-900 dark:text-white font-semibold">{t('progress.thisWeek')}</p>
-                <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.exercises', { defaultValue: 'Exercises' })} {t('progress.thisWeek').toLowerCase()}</p>
+          </CardContent>
+        </Card>
+
+        {/* Exercises Statistics Table */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300">
+          <CardHeader>
+            <CardTitle className="text-slate-900 dark:text-white">{t('progress.exercises', { defaultValue: 'Exercises' })}</CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">{t('progress.exerciseStatistics', { defaultValue: 'Exercise statistics by period' })}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.totalExercises', { defaultValue: 'Total Exercises' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.allTime')}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{exerciseCountAll}</p>
+                </div>
               </div>
-              <div className="text-right">
-                <p className="text-xl font-bold text-slate-900 dark:text-white">{exerciseCountWeek}</p>
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.thisYear', { defaultValue: 'This Year' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.exercises', { defaultValue: 'Exercises' })} {t('progress.thisYear', { defaultValue: 'this year' }).toLowerCase()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{exerciseCountYear}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.thisMonth')}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.exercises', { defaultValue: 'Exercises' })} {t('progress.thisMonth').toLowerCase()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{exerciseCountMonth}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.thisWeek')}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.exercises', { defaultValue: 'Exercises' })} {t('progress.thisWeek').toLowerCase()}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{exerciseCountWeek}</p>
+                </div>
               </div>
             </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+
+        {/* Workout Frequency Table */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300">
+          <CardHeader>
+            <CardTitle className="text-slate-900 dark:text-white">{t('progress.workoutFrequency', { defaultValue: 'Workout Frequency' })}</CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">{t('progress.frequencyDescription', { defaultValue: 'Average workouts per period' })}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.weeklyAverage', { defaultValue: 'Weekly Average' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.workoutsPerWeek', { defaultValue: 'Workouts per week' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">
+                    {workoutsThisMonth > 0 ? (workoutsThisMonth / 4.33).toFixed(1) : '0.0'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.monthlyAverage', { defaultValue: 'Monthly Average' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.workoutsPerMonth', { defaultValue: 'Workouts per month' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{workoutsThisMonth}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.yearlyTotal', { defaultValue: 'Yearly Total' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.workoutsThisYear', { defaultValue: 'Workouts this year' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{workoutsThisYear}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.totalCreated', { defaultValue: 'Total Created' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.workoutRoutines', { defaultValue: 'Workout routines created' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{workoutCount}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Exercise Volume Table */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300">
+          <CardHeader>
+            <CardTitle className="text-slate-900 dark:text-white">{t('progress.exerciseVolume', { defaultValue: 'Exercise Volume' })}</CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">{t('progress.volumeDescription', { defaultValue: 'Total exercises completed by period' })}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.weeklyVolume', { defaultValue: 'Weekly Volume' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.exercisesPerWeek', { defaultValue: 'Exercises per week' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">
+                    {exerciseCountMonth > 0 ? (exerciseCountMonth / 4.33).toFixed(1) : '0.0'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.monthlyVolume', { defaultValue: 'Monthly Volume' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.exercisesPerMonth', { defaultValue: 'Exercises per month' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{exerciseCountMonth}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.yearlyVolume', { defaultValue: 'Yearly Volume' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.exercisesThisYear', { defaultValue: 'Exercises this year' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{exerciseCountYear}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.allTimeVolume', { defaultValue: 'All Time Volume' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.totalExercisesCompleted', { defaultValue: 'Total exercises completed' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{exerciseCountAll}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Consistency Table */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300">
+          <CardHeader>
+            <CardTitle className="text-slate-900 dark:text-white">{t('progress.consistency', { defaultValue: 'Consistency' })}</CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">{t('progress.consistencyDescription', { defaultValue: 'Your training consistency metrics' })}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.currentWeek', { defaultValue: 'Current Week' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.workoutsCompleted', { defaultValue: 'Workouts completed' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{workoutsThisWeek}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.currentMonth', { defaultValue: 'Current Month' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.workoutsCompleted', { defaultValue: 'Workouts completed' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{workoutsThisMonth}</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.weekStreak', { defaultValue: 'Week Streak' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.consecutiveWeeks', { defaultValue: 'Consecutive weeks with workouts' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">
+                    {workoutsThisWeek > 0 ? '1+' : '0'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.completionRate', { defaultValue: 'Completion Rate' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.workoutsVsCreated', { defaultValue: 'Completed vs created' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">
+                    {workoutCount > 0 ? ((completedAll / workoutCount) * 100).toFixed(1) : '0.0'}%
+                  </p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Performance Metrics Table */}
+        <Card className="bg-white/80 dark:bg-slate-800/50 border-slate-200 dark:border-slate-700 hover:shadow-lg transition-all duration-300">
+          <CardHeader>
+            <CardTitle className="text-slate-900 dark:text-white">{t('progress.performanceMetrics', { defaultValue: 'Performance Metrics' })}</CardTitle>
+            <CardDescription className="text-slate-600 dark:text-slate-400">{t('progress.metricsDescription', { defaultValue: 'Key performance indicators' })}</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-4">
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.exercisesPerWorkout', { defaultValue: 'Exercises per Workout' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.averageExerciseCount', { defaultValue: 'Average exercises per workout' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">
+                    {completedAll > 0 ? (exerciseCountAll / completedAll).toFixed(1) : '0.0'}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.monthlyGrowth', { defaultValue: 'Monthly Growth' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.workoutIncrease', { defaultValue: 'Workout increase this month' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">
+                    {workoutsThisMonth > 0 ? '+' : ''}{workoutsThisMonth}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3 border-b border-slate-200 dark:border-slate-700">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.activityLevel', { defaultValue: 'Activity Level' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.basedOnFrequency', { defaultValue: 'Based on workout frequency' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">
+                    {workoutsThisMonth >= 12 ? t('progress.veryActive', { defaultValue: 'Very Active' }) :
+                     workoutsThisMonth >= 8 ? t('progress.active', { defaultValue: 'Active' }) :
+                     workoutsThisMonth >= 4 ? t('progress.moderate', { defaultValue: 'Moderate' }) :
+                     t('progress.beginner', { defaultValue: 'Beginner' })}
+                  </p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between py-3">
+                <div>
+                  <p className="text-slate-900 dark:text-white font-semibold">{t('progress.totalActivity', { defaultValue: 'Total Activity' })}</p>
+                  <p className="text-sm text-slate-600 dark:text-slate-400">{t('progress.allTimeWorkouts', { defaultValue: 'All time workouts completed' })}</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-xl font-bold text-slate-900 dark:text-white">{completedAll}</p>
+                </div>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
 
       {/* Charts Section placed at top */}
     </div>

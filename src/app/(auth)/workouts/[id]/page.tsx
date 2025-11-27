@@ -115,35 +115,13 @@ export default function WorkoutDetailPage() {
   }, [params.id]);
 
   /**
-   * Handle edit button click - redirect to create page with workout data pre-filled
+   * Handle edit button click - redirect to edit page
    */
   const handleEdit = () => {
     if (!workout) return;
     
-    // Store workout data in localStorage for the create page to load
-    localStorage.setItem('workoutEditId', params.id);
-    localStorage.setItem('workoutFormName', workout.name || '');
-    localStorage.setItem('workoutFormDescription', workout.description || '');
-    localStorage.setItem('workoutFormDifficulty', workout.difficulty || '');
-    localStorage.setItem('workoutFormType', workout.type || '');
-    localStorage.setItem('workoutFormDays', workout.days_per_week?.toString() || '');
-    localStorage.setItem('workoutFormNotes', workout.user_notes || '');
-    localStorage.setItem('workoutFormIsPublic', workout.is_public?.toString() || 'true');
-    
-    // Map exercises to the format expected by the create page
-    const exercises = (workout.exercises || []).map((ex: any) => ({
-      id: ex.exercise_id || ex.exercise?.id || ex.id,
-      name: ex.exercise?.name || ex.name || 'Unknown Exercise',
-      exercise_id: ex.exercise_id || ex.exercise?.id || ex.id,
-      sets: ex.sets || 3,
-      reps: ex.reps || 10,
-      weight: ex.weight_kg || ex.weight || 0,
-    }));
-    
-    localStorage.setItem('workoutFormExercises', JSON.stringify(exercises));
-    
-    // Redirect to create page
-    router.push('/workouts/new');
+    // Redirect to the dedicated edit page
+    router.push(`/workouts/${params.id}/edit`);
   };
 
   /**

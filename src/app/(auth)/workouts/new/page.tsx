@@ -48,13 +48,19 @@ export default function WorkoutCreatePage() {
   /**
    * Load form data from localStorage on mount.
    * This allows users to navigate to the exercise selector and back without losing data.
-   * Also supports editing existing workouts (when workoutEditId is set).
+   * Note: This page is ONLY for creating new workouts. Editing should use /workouts/[id]/edit
    */
   useEffect(() => {
     try {
-      // Check if this is an edit operation
-      const editId = localStorage.getItem('workoutEditId');
-      const isEdit = !!editId;
+      // Check if localStorage is available (browser compatibility)
+      if (typeof window === 'undefined' || !window.localStorage) {
+        setIsInitialized(true);
+        return;
+      }
+      
+      // Clear any leftover edit ID from previous sessions
+      // This ensures we're always creating a new workout, not editing
+      localStorage.removeItem('workoutEditId');
       
       // Load exercises
       const storedExercises = localStorage.getItem('workoutFormExercises');
@@ -85,11 +91,6 @@ export default function WorkoutCreatePage() {
 
       const storedIsPublic = localStorage.getItem('workoutFormIsPublic');
       if (storedIsPublic !== null) setIsPublic(storedIsPublic === 'true');
-
-      // Store edit ID in component state if editing
-      if (isEdit) {
-        // The edit ID is already in localStorage, we'll use it in handleSubmit
-      }
 
       setIsInitialized(true);
     } catch (err) {
@@ -190,30 +191,14 @@ export default function WorkoutCreatePage() {
       if (userNotes) payload.user_notes = userNotes;
       payload.is_public = isPublic; // Always include visibility setting
 
-      // Check if this is an edit operation
-      const editId = localStorage.getItem('workoutEditId');
-      if (editId) {
-        // Update existing workout
-        await workoutsApi.update(editId, payload);
-        // Clear edit ID
-        localStorage.removeItem('workoutEditId');
-        // Redirect to workout detail page
-        router.push(`/workouts/${editId}`);
-      } else {
-        // Create new workout
-        const created = await workoutsApi.create(payload);
-        // Redirect to the created workout detail page
-        if (created?.id) {
-          router.push(`/workouts/${created.id}`);
-        } else {
-          router.push('/workouts');
-        }
-      }
-
+      // This page is ONLY for creating new workouts
+      // Editing should use /workouts/[id]/edit
+      const created = await workoutsApi.create(payload);
+      
       // Show success and redirect
       setError('');
 
-      // Clear localStorage data after successful creation/update
+      // Clear localStorage data after successful creation
       localStorage.removeItem('workoutFormName');
       localStorage.removeItem('workoutFormDescription');
       localStorage.removeItem('workoutFormDifficulty');
@@ -222,8 +207,14 @@ export default function WorkoutCreatePage() {
       localStorage.removeItem('workoutFormDays');
       localStorage.removeItem('workoutFormNotes');
       localStorage.removeItem('workoutFormIsPublic');
+      localStorage.removeItem('workoutEditId'); // Ensure edit ID is cleared
 
-      router.push('/workouts');
+      // Redirect to the created workout detail page
+      if (created?.id) {
+        router.push(`/workouts/${created.id}`);
+      } else {
+        router.push('/workouts');
+      }
     } catch (err: any) {
       let msg = 'Error creating routine';
 

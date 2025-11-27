@@ -18,6 +18,7 @@ const resources = {
         search: 'Search',
         select: 'Select',
         view: 'View',
+        viewDetails: 'View Details',
         create: 'Create',
         update: 'Update',
         next: 'Next',
@@ -473,6 +474,12 @@ const resources = {
           diet: 'Can you suggest a meal plan for weight loss?',
           calendar: 'Help me organize my training schedule',
         },
+        selectAgent: 'Select Agent',
+        agent: {
+          reception: 'Reception Agent',
+          data: 'Data Agent',
+          routine: 'Routine Agent',
+        },
       },
       errors: {
         error: 'Error',
@@ -550,6 +557,7 @@ const resources = {
         search: 'Buscar',
         select: 'Seleccionar',
         view: 'Ver',
+        viewDetails: 'Ver Detalles',
         create: 'Crear',
         update: 'Actualizar',
         next: 'Siguiente',
@@ -1001,6 +1009,12 @@ const resources = {
           diet: '¿Puedes sugerirme un plan de comidas para perder peso?',
           calendar: 'Ayúdame a organizar mi horario de entrenamiento',
         },
+        selectAgent: 'Seleccionar Agente',
+        agent: {
+          reception: 'Agente de Recepción',
+          data: 'Agente de Datos',
+          routine: 'Agente de Rutinas',
+        },
       },
       errors: {
         error: 'Error',
@@ -1077,6 +1091,7 @@ const resources = {
         search: 'Cercar',
         select: 'Seleccionar',
         view: 'Veure',
+        viewDetails: 'Veure Detalls',
         create: 'Crear',
         update: 'Actualitzar',
         next: 'Següent',
@@ -1511,6 +1526,12 @@ const resources = {
           diet: 'Pots suggerir-me un pla de menjars per perdre pes?',
           calendar: 'Ajuda\'m a organitzar el meu horari d\'entrenament',
         },
+        selectAgent: 'Seleccionar Agent',
+        agent: {
+          reception: 'Agent de Recepció',
+          data: 'Agent de Dades',
+          routine: 'Agent de Rutines',
+        },
       },
       errors: {
         error: 'Error',
@@ -1587,6 +1608,7 @@ const resources = {
         search: 'Rechercher',
         select: 'Sélectionner',
         view: 'Voir',
+        viewDetails: 'Voir les Détails',
         create: 'Créer',
         update: 'Mettre à jour',
         next: 'Suivant',
@@ -2034,6 +2056,12 @@ const resources = {
           routine: 'Quelle routine recommandez-vous pour développer les muscles?',
           diet: 'Pouvez-vous suggérer un plan de repas pour perdre du poids?',
           calendar: 'Aidez-moi à organiser mon calendrier d\'entraînement',
+        },
+        selectAgent: 'Sélectionner l\'Agent',
+        agent: {
+          reception: 'Agent de Réception',
+          data: 'Agent de Données',
+          routine: 'Agent de Routine',
         },
       },
       errors: {

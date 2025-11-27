@@ -11,6 +11,8 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
 import { useTranslation } from 'react-i18next';
 import { aiChatApi } from '@/features/ai-chat/api/ai-chat.api';
 import { toast } from 'sonner';
@@ -33,7 +35,9 @@ const resolveLocale = (lang: string) => {
  * - Real-time chat interface
  * - Conversation management (create, delete, switch)
  * - Voice input (speech-to-text)
- * - Integration with specialized agents (Reception, Data, Routine)
+ * - Integration with specialized agents (Reception, Routine)
+ *   - Reception: Direct communication with reception agent
+ *   - Routine: Chains data agent -> recommend-exercises endpoint to generate workout routines
  * - Quick action suggestions
  */
 export default function AIChatPage() {
@@ -60,6 +64,8 @@ export default function AIChatPage() {
   const [contextSummary, setContextSummary] = useState<AiContextSummary | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [hasUserDataContext, setHasUserDataContext] = useState(false);
+  // Selected agent type (only reception and routine are available to users)
+  const [selectedAgent, setSelectedAgent] = useState<'reception' | 'routine'>('reception');
   // Rename dialog state
   const [renameDialog, setRenameDialog] = useState<{ open: boolean; conversationId: string | null; value: string }>({
     open: false,
@@ -524,10 +530,11 @@ export default function AIChatPage() {
     messageText: string,
     targetConversationId: string,
     controller: AbortController,
+    agentType: 'reception' | 'routine',
     attempt = 1
   ): Promise<{ data: { response: string } }> => {
     try {
-      return await aiChatApi.chatWithAgent(messageText, targetConversationId, controller.signal);
+      return await aiChatApi.chatWithAgent(messageText, targetConversationId, controller.signal, agentType);
     } catch (error: any) {
       if (controller.signal.aborted || error?.name === 'AbortError') {
         throw error;
@@ -538,7 +545,7 @@ export default function AIChatPage() {
 
       if (retryable) {
         await wait(2000 * attempt);
-        return sendMessageWithRetry(messageText, targetConversationId, controller, attempt + 1);
+        return sendMessageWithRetry(messageText, targetConversationId, controller, agentType, attempt + 1);
       }
 
       throw error;
@@ -590,7 +597,7 @@ export default function AIChatPage() {
          targetConversationId = normalizedConversation.id;
       }
 
-      const response = await sendMessageWithRetry(userMessage, targetConversationId!, controller);
+      const response = await sendMessageWithRetry(userMessage, targetConversationId!, controller, selectedAgent);
       
       setMessages(prev => [
         ...prev,
@@ -633,13 +640,29 @@ export default function AIChatPage() {
           </h1>
           <p className="text-slate-600 dark:text-slate-400">{t('aiChat.subtitle')}</p>
         </div>
-        <Badge variant="outline" className="border-purple-500/50 text-purple-500 bg-purple-500/10">
-          <span className="relative flex h-2 w-2 mr-2">
-            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
-            <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
-          </span>
-          {t('common.success')}
-        </Badge>
+        <div className="flex items-center gap-4">
+          <div className="flex flex-col gap-2">
+            <Label htmlFor="agent-select" className="text-sm text-slate-600 dark:text-slate-400">
+              {t('aiChat.selectAgent', { defaultValue: 'Select Agent' })}
+            </Label>
+            <Select value={selectedAgent} onValueChange={(value: 'reception' | 'routine') => setSelectedAgent(value)}>
+              <SelectTrigger id="agent-select" className="w-[180px] bg-white dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
+                <SelectItem value="reception">{t('aiChat.agent.reception', { defaultValue: 'Reception Agent' })}</SelectItem>
+                <SelectItem value="routine">{t('aiChat.agent.routine', { defaultValue: 'Routine Agent' })}</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <Badge variant="outline" className="border-purple-500/50 text-purple-500 bg-purple-500/10">
+            <span className="relative flex h-2 w-2 mr-2">
+              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>
+              <span className="relative inline-flex rounded-full h-2 w-2 bg-purple-500"></span>
+            </span>
+            {t('common.success')}
+          </Badge>
+        </div>
       </div>
 
       {/* Chat Container */}
