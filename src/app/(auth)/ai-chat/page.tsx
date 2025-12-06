@@ -11,8 +11,6 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Badge } from '@/components/ui/badge';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Label } from '@/components/ui/label';
 import { useTranslation } from 'react-i18next';
 import { aiChatApi } from '@/features/ai-chat/api/ai-chat.api';
 import { toast } from 'sonner';
@@ -64,8 +62,11 @@ export default function AIChatPage() {
   const [contextSummary, setContextSummary] = useState<AiContextSummary | null>(null);
   const [isSidebarOpen, setIsSidebarOpen] = useState(true);
   const [hasUserDataContext, setHasUserDataContext] = useState(false);
-  // Selected agent type (only reception and routine are available to users)
-  const [selectedAgent, setSelectedAgent] = useState<'reception' | 'routine'>('reception');
+  // Agent state: tracks which agents have returned datos
+  const [agentState, setAgentState] = useState<{ receptionHasData: boolean; dataHasData: boolean }>({
+    receptionHasData: false,
+    dataHasData: false,
+  });
   // Rename dialog state
   const [renameDialog, setRenameDialog] = useState<{ open: boolean; conversationId: string | null; value: string }>({
     open: false,
@@ -329,8 +330,12 @@ export default function AIChatPage() {
           role: msg.role,
           content: msg.content
         })));
+        // Reset agent state when loading a conversation (will be updated on next message)
+        setAgentState({ receptionHasData: false, dataHasData: false });
       } else {
         setMessages([{ role: 'assistant', content: t('aiChat.greeting') }]);
+      setAgentState({ receptionHasData: false, dataHasData: false });
+        setAgentState({ receptionHasData: false, dataHasData: false });
       }
     } catch (error) {
       console.error('Failed to load messages:', error);
@@ -397,6 +402,7 @@ export default function AIChatPage() {
       setConversations((prev) => [normalized, ...prev]);
       setCurrentConversationId(normalized.id);
       setMessages([{ role: 'assistant', content: t('aiChat.greeting') }]);
+      setAgentState({ receptionHasData: false, dataHasData: false });
     } catch (error) {
       console.error('Failed to create new chat:', error);
       toast.error(t('errors.generic', { defaultValue: 'Failed to start new conversation' }));
@@ -422,6 +428,7 @@ export default function AIChatPage() {
         } else {
           setCurrentConversationId(null);
           setMessages([{ role: 'assistant', content: t('aiChat.greeting') }]);
+      setAgentState({ receptionHasData: false, dataHasData: false });
         }
       }
       toast.success('Conversation deleted');
@@ -530,11 +537,11 @@ export default function AIChatPage() {
     messageText: string,
     targetConversationId: string,
     controller: AbortController,
-    agentType: 'reception' | 'routine',
+    currentAgent?: 'reception' | 'data',
     attempt = 1
-  ): Promise<{ data: { response: string } }> => {
+  ): Promise<{ data: { response: string; receptionHasData?: boolean; dataHasData?: boolean } }> => {
     try {
-      return await aiChatApi.chatWithAgent(messageText, targetConversationId, controller.signal, agentType);
+      return await aiChatApi.chatWithAgent(messageText, targetConversationId, controller.signal, currentAgent);
     } catch (error: any) {
       if (controller.signal.aborted || error?.name === 'AbortError') {
         throw error;
@@ -545,7 +552,7 @@ export default function AIChatPage() {
 
       if (retryable) {
         await wait(2000 * attempt);
-        return sendMessageWithRetry(messageText, targetConversationId, controller, agentType, attempt + 1);
+        return sendMessageWithRetry(messageText, targetConversationId, controller, currentAgent, attempt + 1);
       }
 
       throw error;
@@ -597,8 +604,22 @@ export default function AIChatPage() {
          targetConversationId = normalizedConversation.id;
       }
 
-      const response = await sendMessageWithRetry(userMessage, targetConversationId!, controller, selectedAgent);
+      // Determine which agent to use based on current state
+      // If reception has data but data doesn't, use data agent
+      // Otherwise, use reception agent (or let backend determine)
+      const currentAgent = agentState.receptionHasData && !agentState.dataHasData ? 'data' : undefined;
       
+      const response = await sendMessageWithRetry(userMessage, targetConversationId!, controller, currentAgent);
+      
+      // Update agent state based on response
+      if (response.data.receptionHasData !== undefined) {
+        setAgentState(prev => ({ ...prev, receptionHasData: response.data.receptionHasData! }));
+      }
+      if (response.data.dataHasData !== undefined) {
+        setAgentState(prev => ({ ...prev, dataHasData: response.data.dataHasData! }));
+      }
+      
+      // Show agent response (could be from reception, data, or routine agent)
       setMessages(prev => [
         ...prev,
         {
@@ -613,7 +634,36 @@ export default function AIChatPage() {
         toast.info('Generation stopped by user.');
       } else {
         console.error('Chat error:', error);
-        toast.error(error?.message || 'Failed to communicate with AI Agent');
+        
+        // Extract agent name from error details if available
+        // Error structure from http.ts: error.response.data.error.details
+        const errorResponse = error?.response?.data || {};
+        const errorObj = errorResponse?.error || errorResponse;
+        const errorDetails = errorObj?.details || error?.error?.details || error?.details || {};
+        const agentName = errorDetails?.agentName;
+        
+        // Map agent names to user-friendly names
+        const agentNames: Record<string, string> = {
+          'reception': t('aiChat.agentNames.reception', { defaultValue: 'Reception' }),
+          'data': t('aiChat.agentNames.data', { defaultValue: 'Data' }),
+          'routine': t('aiChat.agentNames.routine', { defaultValue: 'Routine' }),
+        };
+        
+        const friendlyAgentName = agentName ? agentNames[agentName] || agentName : null;
+        const errorMessage = errorObj?.message || error?.message || error?.error?.message || 'Unknown error';
+        
+        // Show error message with agent name if available
+        if (friendlyAgentName) {
+          toast.error(
+            t('aiChat.agentError', { 
+              agent: friendlyAgentName,
+              message: errorMessage,
+              defaultValue: `${friendlyAgentName} agent failed: ${errorMessage}`
+            })
+          );
+        } else {
+          toast.error(errorMessage || 'Failed to communicate with AI Agent');
+        }
       }
     } finally {
       setIsLoading(false);
@@ -641,20 +691,6 @@ export default function AIChatPage() {
           <p className="text-slate-600 dark:text-slate-400">{t('aiChat.subtitle')}</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex flex-col gap-2">
-            <Label htmlFor="agent-select" className="text-sm text-slate-600 dark:text-slate-400">
-              {t('aiChat.selectAgent', { defaultValue: 'Select Agent' })}
-            </Label>
-            <Select value={selectedAgent} onValueChange={(value: 'reception' | 'routine') => setSelectedAgent(value)}>
-              <SelectTrigger id="agent-select" className="w-[180px] bg-white dark:bg-slate-900/50 border-slate-300 dark:border-slate-700 text-slate-900 dark:text-white">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-700">
-                <SelectItem value="reception">{t('aiChat.agent.reception', { defaultValue: 'Reception Agent' })}</SelectItem>
-                <SelectItem value="routine">{t('aiChat.agent.routine', { defaultValue: 'Routine Agent' })}</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
           <Badge variant="outline" className="border-purple-500/50 text-purple-500 bg-purple-500/10">
             <span className="relative flex h-2 w-2 mr-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-purple-400 opacity-75"></span>

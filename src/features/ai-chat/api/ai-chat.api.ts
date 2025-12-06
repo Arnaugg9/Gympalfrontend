@@ -50,17 +50,18 @@ export const aiChatApi = {
 
   /**
    * Send a message to an AI Agent
+   * The system automatically handles the sequential communication:
+   * 1. First communicates with reception agent
+   * 2. Then with data agent
+   * 3. Finally sends combined data to routine agent
    * @param text - The user's message text
    * @param conversationId - Optional conversation ID to continue a thread
    * @param signal - Optional AbortSignal to cancel the request
-   * @param agentType - Optional agent type ('reception' or 'routine'). 
-   *   - 'reception': Direct communication with reception agent
-   *   - 'routine': Chains data agent -> recommend-exercises to generate workout routines
-   *   Defaults to 'reception'
-   * @returns The agent's response
+   * @param currentAgent - Optional agent to use ('reception' or 'data'). If not provided, determined by agent state
+   * @returns The agent's response with agent state information
    */
-  chatWithAgent: (text: string, conversationId?: string, signal?: AbortSignal, agentType?: 'reception' | 'routine') =>
-    http.post<{ data: { response: string } }>(`${baseUrl}/agent`, { text, conversationId, agentType }, { 
+  chatWithAgent: (text: string, conversationId?: string, signal?: AbortSignal, currentAgent?: 'reception' | 'data') =>
+    http.post<{ data: { response: string; receptionHasData?: boolean; dataHasData?: boolean } }>(`${baseUrl}/agent`, { text, conversationId, currentAgent }, { 
       signal,
       timeout: 0 // No timeout for AI generation
     } as any),

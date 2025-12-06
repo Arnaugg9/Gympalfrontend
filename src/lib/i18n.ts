@@ -480,6 +480,12 @@ const resources = {
           data: 'Data Agent',
           routine: 'Routine Agent',
         },
+        agentNames: {
+          reception: 'Reception',
+          data: 'Data',
+          routine: 'Routine',
+        },
+        agentError: '{{agent}} agent failed: {{message}}',
       },
       errors: {
         error: 'Error',
@@ -1015,6 +1021,12 @@ const resources = {
           data: 'Agente de Datos',
           routine: 'Agente de Rutinas',
         },
+        agentNames: {
+          reception: 'Recepción',
+          data: 'Datos',
+          routine: 'Rutinas',
+        },
+        agentError: 'El agente {{agent}} ha fallado: {{message}}',
       },
       errors: {
         error: 'Error',
@@ -1532,6 +1544,12 @@ const resources = {
           data: 'Agent de Dades',
           routine: 'Agent de Rutines',
         },
+        agentNames: {
+          reception: 'Recepció',
+          data: 'Dades',
+          routine: 'Rutines',
+        },
+        agentError: 'L\'agent {{agent}} ha fallat: {{message}}',
       },
       errors: {
         error: 'Error',
@@ -2063,6 +2081,12 @@ const resources = {
           data: 'Agent de Données',
           routine: 'Agent de Routine',
         },
+        agentNames: {
+          reception: 'Réception',
+          data: 'Données',
+          routine: 'Routine',
+        },
+        agentError: 'L\'agent {{agent}} a échoué: {{message}}',
       },
       errors: {
         error: 'Erreur',
