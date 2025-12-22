@@ -52,7 +52,7 @@ Asegúrate de tener instalado lo siguiente antes de comenzar:
 1.  **Clonar el repositorio:**
 
     ```bash
-    git clone <URL_DEL_REPOSITORIO>
+    git clone https://github.com/Arnaugg9/Gympalfrontend
     cd Gympalfrontend
     ```
 
@@ -89,13 +89,13 @@ El siguiente diagrama ilustra la arquitectura de alto nivel del frontend y su in
 ```mermaid
 graph TD
     subgraph Client ["Cliente (Navegador)"]
-        UI[Interfaz de Usuario (Next.js/React)]
-        Store[Estado Global (Zustand)]
-        Cache[Caché de Datos (TanStack Query)]
+        UI["Interfaz de Usuario (Next.js/React)"]
+        Store["Estado Global (Zustand)"]
+        Cache["Caché de Datos (TanStack Query)"]
     end
 
     subgraph Server ["Backend API"]
-        API[Gympal Backend]
+        API["Gympal Backend"]
     end
 
     UI -->|Interacción| Store
